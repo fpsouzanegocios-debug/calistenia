@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { useApp } from '../context/AppContext';
-import { User, Settings, LogOut, Trash2, Edit2, X, Moon, Sun, Check, ChevronRight, Camera, Smartphone, ShieldCheck } from 'lucide-react';
+import { User, Settings, LogOut, Trash2, Edit2, X, Moon, Sun, Check, ChevronRight, Camera, Smartphone, ShieldCheck, Bell } from 'lucide-react';
 import { CircularProgress } from '../components/CircularProgress';
 
 // Helper to compress and resize image client-side to max 400x400
@@ -39,8 +39,35 @@ const compressImage = (file) => {
 };
 
 export function Perfil({ onNavigate }) {
-  const { state, theme, toggleTheme, updateUserProfile, resetProgress, signOut, getCompletedDays, getTotalProgress, user } = useApp();
+  const {
+    state,
+    theme,
+    toggleTheme,
+    updateUserProfile,
+    resetProgress,
+    signOut,
+    getCompletedDays,
+    getTotalProgress,
+    user,
+    notificationPermission,
+    requestPermission,
+    showDeviceNotification
+  } = useApp();
   const isDark = theme === 'dark';
+  const [testNotificationSent, setTestNotificationSent] = useState(false);
+
+  const handleNotificationClick = async () => {
+    if (notificationPermission !== 'granted') {
+      await requestPermission();
+    } else {
+      setTestNotificationSent(true);
+      await showDeviceNotification('¡Notificación de Calistenia Asiática! 🌿', {
+        body: 'Tu dispositivo está sincronizado y recibiendo notificaciones en tiempo real.',
+        icon: '/icons/icon-192.png'
+      });
+      setTimeout(() => setTestNotificationSent(false), 3000);
+    }
+  };
 
   const profile = state.userProfile || {};
   const userEmail = (user?.email || profile.email || '').toLowerCase().trim();
@@ -321,6 +348,61 @@ export function Perfil({ onNavigate }) {
             </h3>
             <p style={{ fontSize: '13px', color: isDark ? '#B8A2AB' : '#84626D', marginTop: '4px', lineHeight: 1.25 }}>
               Configura tu app
+            </p>
+          </div>
+        </div>
+        <ChevronRight className="h-5 w-5 text-[#84626D] flex-shrink-0" />
+      </div>
+
+      {/* Notificaciones Push del Dispositivo */}
+      <div
+        onClick={handleNotificationClick}
+        className="cursor-pointer transition-all flex items-center justify-between mb-4 border shadow-sm hover:border-[#CB4D6D]/40 animate-slide-up"
+        style={{
+          borderRadius: '24px',
+          backgroundColor: isDark ? '#1A1417' : '#FFFFFF',
+          borderColor: isDark ? '#2D2226' : '#E9E2E4',
+          padding: '16px 20px',
+          boxShadow: isDark ? '0 2px 8px -2px rgba(0,0,0,0.3)' : '0 2px 8px -2px rgba(61,41,48,0.06)'
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <div
+            className="flex items-center justify-center flex-shrink-0"
+            style={{
+              width: '44px',
+              height: '44px',
+              minWidth: '44px',
+              borderRadius: '9999px',
+              backgroundColor: notificationPermission === 'granted' ? 'rgba(13, 168, 106, 0.12)' : 'rgba(211, 69, 91, 0.12)',
+              color: notificationPermission === 'granted' ? '#0DA86A' : '#D3455B'
+            }}
+          >
+            <Bell className="h-5 w-5" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h3 style={{ fontSize: '15px', fontWeight: 600, color: isDark ? '#F7EFF2' : '#301D23', lineHeight: 1.25 }}>
+                Notificaciones en el Dispositivo
+              </h3>
+              <span
+                style={{
+                  fontSize: '10px',
+                  fontWeight: 700,
+                  textTransform: 'uppercase',
+                  padding: '2px 8px',
+                  borderRadius: '9999px',
+                  backgroundColor: notificationPermission === 'granted' ? 'rgba(13, 168, 106, 0.15)' : 'rgba(211, 69, 91, 0.15)',
+                  color: notificationPermission === 'granted' ? '#0DA86A' : '#D3455B'
+                }}
+              >
+                {notificationPermission === 'granted' ? 'Activas' : 'Activar'}
+              </span>
+            </div>
+            <p style={{ fontSize: '13px', color: isDark ? '#B8A2AB' : '#84626D', marginTop: '4px', lineHeight: 1.25 }}>
+              {notificationPermission === 'granted'
+                ? (testNotificationSent ? '¡Notificación de prueba enviada!' : 'Toca para enviar una prueba a este dispositivo')
+                : 'Toca para permitir avisos diarios y alertas de entrenamiento'}
             </p>
           </div>
         </div>

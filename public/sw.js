@@ -271,4 +271,16 @@ self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
   }
+  if (event.data && event.data.type === 'SHOW_NOTIFICATION') {
+    const { title, body, icon, badge, data } = event.data;
+    event.waitUntil(
+      self.registration.showNotification(title || 'Calistenia Asiática', {
+        body: body || '',
+        icon: icon || '/icons/icon-192.png',
+        badge: badge || '/icons/icon-72.png',
+        vibrate: [150, 80, 150],
+        data: data || { url: '/' }
+      })
+    );
+  }
 });

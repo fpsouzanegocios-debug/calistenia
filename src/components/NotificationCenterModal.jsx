@@ -3,13 +3,30 @@ import { Bell, X, Check, ChevronRight, Sparkles, Flame, Utensils, Info } from 'l
 import { useApp } from '../context/AppContext';
 
 export function NotificationCenterModal({ isOpen, onClose, notifications: propsNotifications, onMarkAsRead, onNavigate }) {
-  const { theme, notifications: contextNotifications = [], markNotificationAsRead } = useApp();
+  const {
+    theme,
+    notifications: contextNotifications = [],
+    markNotificationAsRead,
+    notificationPermission,
+    requestPermission,
+    showDeviceNotification
+  } = useApp();
   const isDark = theme === 'dark';
+  const [testSent, setTestSent] = React.useState(false);
 
   if (!isOpen) return null;
 
   const notifications = propsNotifications && propsNotifications.length > 0 ? propsNotifications : contextNotifications;
   const handleMarkAsRead = onMarkAsRead || markNotificationAsRead;
+
+  const handleTestNotification = async () => {
+    setTestSent(true);
+    await showDeviceNotification('¡Notificación de Calistenia Asiática! 🌿', {
+      body: 'Tu dispositivo está configurado y recibiendo notificaciones correctamente.',
+      icon: '/icons/icon-192.png'
+    });
+    setTimeout(() => setTestSent(false), 3000);
+  };
 
   const getNotificationIcon = (type) => {
     switch (type) {
@@ -147,6 +164,85 @@ export function NotificationCenterModal({ isOpen, onClose, notifications: propsN
             <X style={{ width: '18px', height: '18px' }} />
           </button>
         </div>
+
+        {/* Device Notification Status / Activation Banner */}
+        {notificationPermission !== 'granted' ? (
+          <div
+            style={{
+              padding: '12px 14px',
+              borderRadius: '16px',
+              backgroundColor: isDark ? 'rgba(211, 69, 91, 0.15)' : '#FFF0F3',
+              border: isDark ? '1px solid rgba(211, 69, 91, 0.3)' : '1px solid #FAD8DF',
+              marginBottom: '14px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '10px'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Bell style={{ width: '18px', height: '18px', color: '#D3455B', flexShrink: 0 }} />
+              <div>
+                <p style={{ fontSize: '12.5px', fontWeight: 600, color: isDark ? '#FFF' : '#301D23', margin: 0, lineHeight: 1.2 }}>
+                  Notificaciones del dispositivo
+                </p>
+                <p style={{ fontSize: '11px', color: isDark ? '#B8A2AB' : '#84626D', margin: '2px 0 0 0', lineHeight: 1.25 }}>
+                  Recibe avisos directos en tu teléfono o navegador.
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={requestPermission}
+              style={{
+                padding: '7px 12px',
+                borderRadius: '10px',
+                backgroundColor: '#D3455B',
+                color: '#FFF',
+                fontSize: '11.5px',
+                fontWeight: 600,
+                border: 'none',
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+                boxShadow: '0 2px 6px rgba(211, 69, 91, 0.3)'
+              }}
+            >
+              Activar
+            </button>
+          </div>
+        ) : (
+          <div
+            style={{
+              padding: '8px 12px',
+              borderRadius: '12px',
+              backgroundColor: isDark ? '#1F171B' : '#F7F3F5',
+              marginBottom: '12px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '8px'
+            }}
+          >
+            <span style={{ fontSize: '11.5px', color: '#0DA86A', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <Check style={{ width: '13px', height: '13px' }} /> Notificaciones activadas en el dispositivo
+            </span>
+            <button
+              onClick={handleTestNotification}
+              disabled={testSent}
+              style={{
+                padding: '4px 8px',
+                borderRadius: '8px',
+                border: isDark ? '1px solid #382A31' : '1px solid #E2D3D8',
+                backgroundColor: 'transparent',
+                color: isDark ? '#E5D6DB' : '#5C3A46',
+                fontSize: '10.5px',
+                fontWeight: 600,
+                cursor: testSent ? 'default' : 'pointer'
+              }}
+            >
+              {testSent ? '¡Enviada!' : 'Probar'}
+            </button>
+          </div>
+        )}
 
         {/* Notifications List */}
         <div

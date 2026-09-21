@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import { showDeviceNotification, requestDeviceNotificationPermission } from '../utils/notifications';
 
 const AppContext = createContext(null);
 
@@ -86,6 +87,19 @@ export function AppProvider({ children }) {
   }, [state]);
 
   const [notifications, setNotifications] = useState([]);
+  const [notificationPermission, setNotificationPermission] = useState(() => {
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      return Notification.permission;
+    }
+    return 'default';
+  });
+
+  const requestPermission = async () => {
+    const perm = await requestDeviceNotificationPermission();
+    setNotificationPermission(perm);
+    return perm;
+  };
+
   const [isAdminMode, setIsAdminMode] = useState(() => {
     if (typeof window !== 'undefined') {
       return localStorage.getItem('calistenia_admin_mode') === 'true';
@@ -115,6 +129,51 @@ export function AppProvider({ children }) {
       console.warn('Erro ao carregar notificações:', e);
     }
   };
+
+  // Realtime subscription to notifications table
+  useEffect(() => {
+    fetchNotifications(user);
+
+    const channel = supabase
+      .channel('public:notifications')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'notifications'
+        },
+        async (payload) => {
+          const newNotif = payload.new;
+          if (!newNotif) return;
+
+          // Audience filter: broadcast to all (user_id === null) or to specific recipient
+          const currentUserId = user?.id;
+          if (newNotif.user_id && newNotif.user_id !== currentUserId) {
+            return;
+          }
+
+          // Add to in-app notification state
+          setNotifications((prev) => {
+            if (prev.some((n) => n.id === newNotif.id)) return prev;
+            return [newNotif, ...prev];
+          });
+
+          // Trigger native device notification (Android / iOS PWA / Desktop)
+          await showDeviceNotification(newNotif.title, {
+            body: newNotif.message,
+            icon: '/icons/icon-192.png',
+            badge: '/icons/icon-72.png',
+            action_url: newNotif.action_url || '/'
+          });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id]);
 
   // Sync Supabase Auth and User Profile
   useEffect(() => {
@@ -461,27 +520,19 @@ export function AppProvider({ children }) {
       };
       const { data, error } = await supabase.from('notifications').insert(payload).select().single();
       if (data) {
-        setNotifications(prev => [data, ...prev]);
+        setNotifications(prev => {
+          if (prev.some(n => n.id === data.id)) return prev;
+          return [data, ...prev];
+        });
 
-        // If Web Notification permission is granted, display browser notification immediately
-        if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
-          try {
-            new Notification(title, {
-              body: message,
-              icon: '/icons/icon-192.png',
-              badge: '/icons/icon-72.png',
-              data: { url: action_url || '/' }
-            });
-          } catch (notifErr) {
-            if (navigator.serviceWorker?.controller) {
-              navigator.serviceWorker.controller.postMessage({
-                type: 'SHOW_NOTIFICATION',
-                title,
-                body: message
-              });
-            }
-          }
-        }
+        // Trigger native notification on local device as well
+        await showDeviceNotification(title, {
+          body: message,
+          icon: '/icons/icon-192.png',
+          badge: '/icons/icon-72.png',
+          action_url: action_url || '/'
+        });
+
         return { success: true, data };
       }
       return { success: false, error };
@@ -599,6 +650,9 @@ export function AppProvider({ children }) {
         fetchNotifications,
         markNotificationAsRead,
         sendCustomNotification,
+        notificationPermission,
+        requestPermission,
+        showDeviceNotification,
         isAdmin: isAdminMode,
         setAdminMode,
         getAllUsersForAdmin
