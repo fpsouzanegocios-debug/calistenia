@@ -43,6 +43,15 @@ export function Auth({ onNavigate }) {
 
         if (error) throw error;
 
+        // If session is not immediately available, sign in to establish persistent session
+        if (!data.session) {
+          try {
+            await supabase.auth.signInWithPassword({ email, password });
+          } catch (autoSignErr) {
+            console.warn('Auto sign-in notice:', autoSignErr);
+          }
+        }
+
         await updateUserProfile({
           name,
           email,
@@ -69,9 +78,24 @@ export function Auth({ onNavigate }) {
         // Check if onboarding is completed or if user is admin
         const { data: profile } = await supabase
           .from('profiles')
-          .select('onboarding_completed, is_admin')
+          .select('*')
           .eq('user_id', data.user.id)
           .single();
+
+        if (profile) {
+          await updateUserProfile({
+            name: profile.name || '',
+            email: profile.email || data.user.email || '',
+            phone: profile.phone || '',
+            age: profile.age,
+            height: profile.height,
+            currentWeight: profile.current_weight,
+            targetWeight: profile.target_weight,
+            targetDays: profile.target_days,
+            onboardingCompleted: profile.onboarding_completed ?? false,
+            isAdmin: profile.is_admin ?? false
+          });
+        }
 
         if (profile?.is_admin) {
           onNavigate('/admin');
@@ -86,6 +110,8 @@ export function Auth({ onNavigate }) {
       let msg = err.message || 'Ocurrió un error al procesar.';
       if (msg.includes('Invalid login credentials')) {
         msg = 'Correo electrónico o contraseña incorrectos.';
+      } else if (msg.includes('Email not confirmed')) {
+        msg = 'Correo electrónico no confirmado. Por favor intenta de nuevo.';
       } else if (msg.includes('User already registered')) {
         msg = 'Este correo ya está registrado. Intenta iniciar sesión.';
       } else if (msg.includes('Database error querying schema') || msg.includes('Scan error')) {
