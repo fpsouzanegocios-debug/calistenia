@@ -24,9 +24,15 @@ export function Onboarding({ onNavigate }) {
         targetDays: 30,
         onboardingCompleted: true
       });
+      if (typeof window !== 'undefined') {
+        sessionStorage.removeItem('calistenia_entrance_modal_seen');
+      }
       onNavigate('/');
     } catch (err) {
       console.error('Onboarding save error:', err);
+      if (typeof window !== 'undefined') {
+        sessionStorage.removeItem('calistenia_entrance_modal_seen');
+      }
       onNavigate('/');
     } finally {
       setLoading(false);

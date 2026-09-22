@@ -84,11 +84,11 @@ export function App() {
       if (!alreadySeen && (!notifsActive || !isAppInstalled)) {
         const timer = setTimeout(() => {
           setShowEntranceModal(true);
-        }, 800);
+        }, 500);
         return () => clearTimeout(timer);
       }
     }
-  }, [loading, user, state.userProfile?.name, pwa?.isInstalled]);
+  }, [loading, user?.id, state.userProfile?.name, state.userProfile?.onboardingCompleted, currentPath, pwa?.isInstalled]);
 
   const handleCloseEntranceModal = () => {
     setShowEntranceModal(false);
@@ -114,13 +114,12 @@ export function App() {
     return <Auth onNavigate={navigate} />;
   }
 
-  if (!onboardingCompleted && currentPath !== '/onboarding') {
-    return <Onboarding onNavigate={navigate} />;
-  }
-
   const renderCurrentView = () => {
+    if (!onboardingCompleted || currentPath === '/onboarding') {
+      return <Onboarding onNavigate={navigate} />;
+    }
     if (currentPath === '/auth') {
-      return <Auth onNavigate={navigate} />;
+      return <Home onNavigate={navigate} />;
     }
     if (currentPath === '/onboarding') {
       return <Onboarding onNavigate={navigate} />;

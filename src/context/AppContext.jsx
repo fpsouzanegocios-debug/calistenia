@@ -620,6 +620,8 @@ export function AppProvider({ children }) {
       try {
         localStorage.removeItem(STORAGE_KEY);
         localStorage.removeItem('calistenia_admin_mode');
+        localStorage.removeItem('calistenia_pwa_installed');
+        sessionStorage.removeItem('calistenia_entrance_modal_seen');
         localStorage.removeItem('generated-diet-plan');
         localStorage.removeItem('calistenia-workout-timer-state');
       } catch (e) {

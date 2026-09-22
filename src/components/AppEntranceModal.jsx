@@ -462,17 +462,17 @@ export function AppEntranceModal({ isOpen, onClose, pwa }) {
                   width: '100%',
                   height: '48px',
                   borderRadius: '16px',
-                  backgroundColor: isIOS ? '#D3455B' : (pwa?.isInstallable ? (isDark ? '#26181D' : '#F5ECEF') : '#D3455B'),
-                  color: isIOS ? '#FFFFFF' : (pwa?.isInstallable ? (isDark ? '#F7EFF2' : '#4E363E') : '#FFFFFF'),
+                  backgroundColor: '#D3455B',
+                  color: '#FFFFFF',
                   fontSize: '14px',
                   fontWeight: 700,
-                  border: isIOS || !pwa?.isInstallable ? 'none' : (isDark ? '1px solid #3D262F' : '1px solid #E8D6DA'),
+                  border: 'none',
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   gap: '8px',
-                  boxShadow: (isIOS || !pwa?.isInstallable) ? '0 4px 14px rgba(211, 69, 91, 0.4)' : 'none',
+                  boxShadow: '0 4px 14px rgba(211, 69, 91, 0.4)',
                   transition: 'all 0.2s'
                 }}
               >

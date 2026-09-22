@@ -7,7 +7,7 @@ export function usePWA(user) {
     if (typeof window === 'undefined') return false;
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
       window.navigator.standalone === true ||
-      localStorage.getItem('calistenia_pwa_installed') === 'true';
+      Boolean(window.document.referrer && window.document.referrer.includes('android-app://'));
     return Boolean(isStandalone);
   });
   const [platform, setPlatform] = useState('unknown');

@@ -59,6 +59,11 @@ export function Auth({ onNavigate }) {
           onboardingCompleted: false
         });
 
+        if (typeof window !== 'undefined') {
+          sessionStorage.removeItem('calistenia_entrance_modal_seen');
+          localStorage.removeItem('calistenia_pwa_installed');
+        }
+
         setSuccessMessage('¡Cuenta creada con éxito!');
         setTimeout(() => {
           onNavigate('/onboarding');
@@ -95,6 +100,10 @@ export function Auth({ onNavigate }) {
             onboardingCompleted: profile.onboarding_completed ?? false,
             isAdmin: profile.is_admin ?? false
           });
+        }
+
+        if (typeof window !== 'undefined') {
+          sessionStorage.removeItem('calistenia_entrance_modal_seen');
         }
 
         if (profile?.is_admin) {
