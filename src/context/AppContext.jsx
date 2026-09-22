@@ -519,24 +519,32 @@ export function AppProvider({ children }) {
         read: false
       };
       const { data, error } = await supabase.from('notifications').insert(payload).select().single();
+      if (error) {
+        console.error('Error insert notification in Supabase:', error);
+        return { success: false, error };
+      }
       if (data) {
-        setNotifications(prev => {
-          if (prev.some(n => n.id === data.id)) return prev;
-          return [data, ...prev];
-        });
+        const currentUserId = user?.id;
+        // Only add to sender's own bell if it's a broadcast or specifically targeted to themselves
+        if (!data.user_id || data.user_id === currentUserId) {
+          setNotifications(prev => {
+            if (prev.some(n => n.id === data.id)) return prev;
+            return [data, ...prev];
+          });
 
-        // Trigger native notification on local device as well
-        await showDeviceNotification(title, {
-          body: message,
-          icon: '/icons/icon-192.png',
-          badge: '/icons/icon-72.png',
-          action_url: action_url || '/'
-        });
+          await showDeviceNotification(title, {
+            body: message,
+            icon: '/icons/icon-192.png',
+            badge: '/icons/icon-72.png',
+            action_url: action_url || '/'
+          });
+        }
 
         return { success: true, data };
       }
-      return { success: false, error };
+      return { success: false, error: new Error('No data returned') };
     } catch (err) {
+      console.error('Exception in sendCustomNotification:', err);
       return { success: false, error: err };
     }
   };

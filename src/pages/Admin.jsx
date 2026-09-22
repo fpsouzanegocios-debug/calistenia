@@ -62,6 +62,7 @@ export function Admin({ onNavigate }) {
   const [notifAction, setNotifAction] = useState('/#/treinos');
   const [isSending, setIsSending] = useState(false);
   const [sendSuccessMessage, setSendSuccessMessage] = useState('');
+  const [sendErrorMessage, setSendErrorMessage] = useState('');
 
   const loadAdminData = async () => {
     setLoading(true);
@@ -228,50 +229,62 @@ export function Admin({ onNavigate }) {
 
     setIsSending(true);
     setSendSuccessMessage('');
+    setSendErrorMessage('');
 
     try {
-      if (targetAudience === 'user' && selectedUserId) {
+      if (targetAudience === 'user') {
+        if (!selectedUserId) {
+          throw new Error('Por favor, selecciona un usuario destinatario.');
+        }
         // Send to specific user
-        await sendCustomNotification({
-          title: notifTitle,
-          message: notifMessage,
+        const res = await sendCustomNotification({
+          title: notifTitle.trim(),
+          message: notifMessage.trim(),
           type: notifType,
           action_url: notifAction,
           user_id: selectedUserId
         });
+        if (!res?.success) {
+          throw new Error(res?.error?.message || 'Error al enviar notificación al usuario.');
+        }
       } else if (targetAudience === 'pwa') {
         // Send to all users with PWA installed
         const pwaUserIds = data.profiles.filter(p => p.is_pwa_installed && p.user_id).map(p => p.user_id);
         if (pwaUserIds.length === 0) {
-          await sendCustomNotification({
-            title: notifTitle,
-            message: notifMessage,
+          const res = await sendCustomNotification({
+            title: notifTitle.trim(),
+            message: notifMessage.trim(),
             type: notifType,
             action_url: notifAction
           });
+          if (!res?.success) throw new Error(res?.error?.message || 'Error al enviar notificación broadcast.');
         } else {
           for (const uid of pwaUserIds) {
-            await sendCustomNotification({
-              title: notifTitle,
-              message: notifMessage,
+            const res = await sendCustomNotification({
+              title: notifTitle.trim(),
+              message: notifMessage.trim(),
               type: notifType,
               action_url: notifAction,
               user_id: uid
             });
+            if (!res?.success) throw new Error(res?.error?.message || 'Error al enviar a usuarios PWA.');
           }
         }
       } else {
         // Broadcast to all (user_id = null)
-        await sendCustomNotification({
-          title: notifTitle,
-          message: notifMessage,
+        const res = await sendCustomNotification({
+          title: notifTitle.trim(),
+          message: notifMessage.trim(),
           type: notifType,
           action_url: notifAction,
           user_id: null
         });
+        if (!res?.success) {
+          throw new Error(res?.error?.message || 'Error al enviar notificación broadcast.');
+        }
       }
 
-      setSendSuccessMessage('Notificação enviada com sucesso aos destinatários!');
+      setSendSuccessMessage('¡Notificación enviada con éxito a los destinatarios!');
       setNotifTitle('');
       setNotifMessage('');
 
@@ -279,6 +292,7 @@ export function Admin({ onNavigate }) {
       loadAdminData();
     } catch (err) {
       console.error('Erro ao enviar:', err);
+      setSendErrorMessage(err.message || 'Error al procesar el envío de la notificación.');
     } finally {
       setIsSending(false);
     }
@@ -1078,6 +1092,27 @@ export function Admin({ onNavigate }) {
               >
                 <CheckCircle style={{ width: '18px', height: '18px', flexShrink: 0 }} />
                 <span>{sendSuccessMessage}</span>
+              </div>
+            )}
+
+            {sendErrorMessage && (
+              <div
+                style={{
+                  padding: '12px 16px',
+                  borderRadius: '14px',
+                  backgroundColor: isDark ? 'rgba(222, 59, 64, 0.15)' : '#FDE8E9',
+                  border: '1px solid #DE3B40',
+                  color: '#DE3B40',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                  marginBottom: '20px'
+                }}
+              >
+                <AlertTriangle style={{ width: '18px', height: '18px', flexShrink: 0 }} />
+                <span>{sendErrorMessage}</span>
               </div>
             )}
 
