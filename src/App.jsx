@@ -21,12 +21,14 @@ import { Admin } from './pages/Admin';
 import { usePWA } from './hooks/usePWA';
 import { InstallPromptModal } from './components/InstallPromptModal';
 import { NotificationCenterModal } from './components/NotificationCenterModal';
+import { AppEntranceModal } from './components/AppEntranceModal';
 
 export function App() {
   const { user, loading, state } = useApp();
-  const pwa = usePWA();
+  const pwa = usePWA(user);
   const [showInstallModal, setShowInstallModal] = useState(false);
   const [showNotificationModal, setShowNotificationModal] = useState(false);
+  const [showEntranceModal, setShowEntranceModal] = useState(false);
   const [currentPath, setCurrentPath] = useState(() => {
     if (typeof window !== 'undefined') {
       const hash = window.location.hash.replace('#', '');
@@ -67,6 +69,33 @@ export function App() {
       window.removeEventListener('open-notifications', handleOpenNotifications);
     };
   }, []);
+
+  // Show entrance popup for Notifications & PWA install upon entering the app
+  useEffect(() => {
+    if (!loading) {
+      const hasProfile = !!state.userProfile?.name || !!user;
+      if (!hasProfile) return;
+
+      const alreadySeen = typeof window !== 'undefined' ? sessionStorage.getItem('calistenia_entrance_modal_seen') : null;
+      const notifsActive = typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted';
+      const isAppInstalled = pwa?.isInstalled;
+
+      // If either notifications or app install is not yet active and not dismissed in this session
+      if (!alreadySeen && (!notifsActive || !isAppInstalled)) {
+        const timer = setTimeout(() => {
+          setShowEntranceModal(true);
+        }, 800);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [loading, user, state.userProfile?.name, pwa?.isInstalled]);
+
+  const handleCloseEntranceModal = () => {
+    setShowEntranceModal(false);
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('calistenia_entrance_modal_seen', 'true');
+    }
+  };
 
   if (loading) {
     return (
@@ -169,6 +198,13 @@ export function App() {
         isOpen={showNotificationModal}
         onClose={() => setShowNotificationModal(false)}
         onNavigate={navigate}
+      />
+
+      {/* Entrance Popup for Notifications & PWA Install */}
+      <AppEntranceModal
+        isOpen={showEntranceModal}
+        onClose={handleCloseEntranceModal}
+        pwa={pwa}
       />
     </div>
   );
