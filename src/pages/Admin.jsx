@@ -237,6 +237,7 @@ export function Admin({ onNavigate }) {
           throw new Error('Por favor, selecciona un usuario destinatario.');
         }
         // Send to specific user
+        const dest = data.profiles.find(p => (p.user_id || p.id) === selectedUserId);
         const res = await sendCustomNotification({
           title: notifTitle.trim(),
           message: notifMessage.trim(),
@@ -247,29 +248,7 @@ export function Admin({ onNavigate }) {
         if (!res?.success) {
           throw new Error(res?.error?.message || 'Error al enviar notificación al usuario.');
         }
-      } else if (targetAudience === 'pwa') {
-        // Send to all users with PWA installed
-        const pwaUserIds = data.profiles.filter(p => p.is_pwa_installed && p.user_id).map(p => p.user_id);
-        if (pwaUserIds.length === 0) {
-          const res = await sendCustomNotification({
-            title: notifTitle.trim(),
-            message: notifMessage.trim(),
-            type: notifType,
-            action_url: notifAction
-          });
-          if (!res?.success) throw new Error(res?.error?.message || 'Error al enviar notificación broadcast.');
-        } else {
-          for (const uid of pwaUserIds) {
-            const res = await sendCustomNotification({
-              title: notifTitle.trim(),
-              message: notifMessage.trim(),
-              type: notifType,
-              action_url: notifAction,
-              user_id: uid
-            });
-            if (!res?.success) throw new Error(res?.error?.message || 'Error al enviar a usuarios PWA.');
-          }
-        }
+        setSendSuccessMessage(`¡Notificación enviada exclusivamente a ${dest?.name || 'usuario'} (${dest?.email})!`);
       } else {
         // Broadcast to all (user_id = null)
         const res = await sendCustomNotification({
@@ -282,9 +261,8 @@ export function Admin({ onNavigate }) {
         if (!res?.success) {
           throw new Error(res?.error?.message || 'Error al enviar notificación broadcast.');
         }
+        setSendSuccessMessage('¡Notificación enviada con éxito a TODOS los dispositivos y usuarios!');
       }
-
-      setSendSuccessMessage('¡Notificación enviada con éxito a los destinatarios!');
       setNotifTitle('');
       setNotifMessage('');
 
@@ -1203,6 +1181,23 @@ export function Admin({ onNavigate }) {
                         </option>
                       ))}
                     </select>
+
+                    {selectedUserId && (
+                      <div
+                        style={{
+                          marginTop: '8px',
+                          padding: '10px 14px',
+                          borderRadius: '12px',
+                          backgroundColor: isDark ? 'rgba(211,69,91,0.15)' : '#FFF0F3',
+                          border: '1px solid rgba(211,69,91,0.3)',
+                          color: isDark ? '#F7EFF2' : '#841B2D',
+                          fontSize: '11.5px',
+                          lineHeight: 1.4
+                        }}
+                      >
+                        ⚠️ <strong>Aviso Importante:</strong> Esta notificación se enviará <strong>exclusivamente</strong> a la cuenta seleccionada (<strong>{data.profiles.find(p => (p.user_id || p.id) === selectedUserId)?.email}</strong>). Si estás probando en tu celular y tienes otra cuenta abierta, no le llegará a tu celular. Para que llegue a tu teléfono y a todos los dispositivos, selecciona <strong>"🌍 Todos"</strong>.
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
