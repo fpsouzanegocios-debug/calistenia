@@ -70,22 +70,35 @@ export function App() {
     };
   }, []);
 
-  // Show entrance popup for Notifications & PWA install upon entering the app
+  // Show entrance popup:
+  // 1. On Web: Prompt to install the app (Android or iOS)
+  // 2. In Installed App (standalone): Prompt to activate notifications
   useEffect(() => {
     if (!loading) {
       const hasProfile = !!state.userProfile?.name || !!user;
       if (!hasProfile) return;
 
-      const alreadySeen = typeof window !== 'undefined' ? sessionStorage.getItem('calistenia_entrance_modal_seen') : null;
+      const isAppInstalled = Boolean(pwa?.isInstalled);
       const notifsActive = typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted';
-      const isAppInstalled = pwa?.isInstalled;
 
-      // If either notifications or app install is not yet active and not dismissed in this session
-      if (!alreadySeen && (!notifsActive || !isAppInstalled)) {
-        const timer = setTimeout(() => {
-          setShowEntranceModal(true);
-        }, 500);
-        return () => clearTimeout(timer);
+      if (!isAppInstalled) {
+        // On Web: prompt to install
+        const installSeen = typeof window !== 'undefined' ? sessionStorage.getItem('calistenia_web_install_prompt_seen') : null;
+        if (!installSeen) {
+          const timer = setTimeout(() => {
+            setShowEntranceModal(true);
+          }, 600);
+          return () => clearTimeout(timer);
+        }
+      } else {
+        // In Installed App: prompt to activate notifications
+        const notifSeen = typeof window !== 'undefined' ? sessionStorage.getItem('calistenia_app_notif_prompt_seen') : null;
+        if (!notifSeen && !notifsActive) {
+          const timer = setTimeout(() => {
+            setShowEntranceModal(true);
+          }, 600);
+          return () => clearTimeout(timer);
+        }
       }
     }
   }, [loading, user?.id, state.userProfile?.name, state.userProfile?.onboardingCompleted, currentPath, pwa?.isInstalled]);
@@ -93,7 +106,11 @@ export function App() {
   const handleCloseEntranceModal = () => {
     setShowEntranceModal(false);
     if (typeof window !== 'undefined') {
-      sessionStorage.setItem('calistenia_entrance_modal_seen', 'true');
+      if (!pwa?.isInstalled) {
+        sessionStorage.setItem('calistenia_web_install_prompt_seen', 'true');
+      } else {
+        sessionStorage.setItem('calistenia_app_notif_prompt_seen', 'true');
+      }
     }
   };
 

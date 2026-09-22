@@ -1,18 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Bell,
   Smartphone,
   Check,
-  Sparkles,
   X,
   Share,
   Zap,
-  ArrowRight,
   MoreVertical,
   PlusSquare,
   Flame,
   CheckCircle2,
-  ChevronRight,
+  AlertTriangle,
   Info
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
@@ -22,34 +20,20 @@ export function AppEntranceModal({ isOpen, onClose, pwa }) {
   const isDark = theme === 'dark';
 
   const isAppInstalled = Boolean(pwa?.isInstalled);
-  const notifsActive = notificationPermission === 'granted';
-
-  // Step 1: 'install' | Step 2: 'notifications' | Step 3: 'done'
-  const [currentStep, setCurrentStep] = useState(isAppInstalled ? 'notifications' : 'install');
-  const [isInstalling, setIsInstalling] = useState(false);
-  const [isRequestingNotif, setIsRequestingNotif] = useState(false);
-
-  // Auto-advance if already installed
-  useEffect(() => {
-    if (isAppInstalled && currentStep === 'install') {
-      setCurrentStep('notifications');
-    }
-  }, [isAppInstalled, currentStep]);
-
-  if (!isOpen) return null;
-
-  // Platform detection
   const isIOS = Boolean(pwa?.isIOS);
   const isAndroid = Boolean(pwa?.isAndroid);
+
+  const [isInstalling, setIsInstalling] = useState(false);
+  const [isRequestingNotif, setIsRequestingNotif] = useState(false);
+  const [notifResult, setNotifResult] = useState(notificationPermission); // 'default' | 'granted' | 'denied' | 'unsupported'
+
+  if (!isOpen) return null;
 
   const handleInstallClick = async () => {
     setIsInstalling(true);
     try {
       if (pwa?.installApp) {
-        const res = await pwa.installApp();
-        if (res?.success) {
-          setCurrentStep('notifications');
-        }
+        await pwa.installApp();
       }
     } catch (e) {
       console.warn('Error en prompt de instalación:', e);
@@ -58,26 +42,17 @@ export function AppEntranceModal({ isOpen, onClose, pwa }) {
     }
   };
 
-  const handleConfirmInstalled = () => {
-    if (pwa?.recordInstallation) {
-      pwa.recordInstallation();
-    }
-    setCurrentStep('notifications');
-  };
-
-  const handleActivateNotifications = async () => {
+  const handleRequestNotifications = async () => {
     setIsRequestingNotif(true);
     try {
-      const perm = await requestPermission();
-      if (perm === 'granted') {
-        setCurrentStep('done');
-      } else {
-        // Even if denied or dismissed, allow finishing
-        setCurrentStep('done');
+      const res = await requestPermission();
+      setNotifResult(res);
+      if (res === 'granted') {
+        // Success! Keep visible for a moment or allow closing
       }
     } catch (e) {
       console.warn('Error solicitando permisos:', e);
-      setCurrentStep('done');
+      setNotifResult('denied');
     } finally {
       setIsRequestingNotif(false);
     }
@@ -107,7 +82,7 @@ export function AppEntranceModal({ isOpen, onClose, pwa }) {
         style={{
           backgroundColor: isDark ? '#161013' : '#FFFFFF',
           borderRadius: '32px',
-          maxWidth: '450px',
+          maxWidth: '440px',
           width: '100%',
           padding: '26px 22px',
           boxShadow: isDark
@@ -159,71 +134,10 @@ export function AppEntranceModal({ isOpen, onClose, pwa }) {
           <X style={{ width: '18px', height: '18px' }} />
         </button>
 
-        {/* 2-Step Progress Indicator */}
-        <div style={{ position: 'relative', zIndex: 1, marginBottom: '20px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '8px' }}>
-            {/* Step 1 Pill */}
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                padding: '5px 12px',
-                borderRadius: '9999px',
-                fontSize: '11px',
-                fontWeight: 700,
-                backgroundColor: currentStep === 'install'
-                  ? '#D3455B'
-                  : (isDark ? 'rgba(13, 168, 106, 0.2)' : '#E6F7EF'),
-                color: currentStep === 'install'
-                  ? '#FFFFFF'
-                  : '#0DA86A',
-                boxShadow: currentStep === 'install' ? '0 2px 8px rgba(211, 69, 91, 0.35)' : 'none'
-              }}
-            >
-              {currentStep !== 'install' ? (
-                <Check style={{ width: '12px', height: '12px', strokeWidth: 3 }} />
-              ) : (
-                <span>1</span>
-              )}
-              <span>Paso 1: Instalar</span>
-            </div>
-
-            <ChevronRight style={{ width: '14px', height: '14px', color: isDark ? '#554249' : '#C4B5BA' }} />
-
-            {/* Step 2 Pill */}
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                padding: '5px 12px',
-                borderRadius: '9999px',
-                fontSize: '11px',
-                fontWeight: 700,
-                backgroundColor: currentStep === 'notifications'
-                  ? '#D3455B'
-                  : (currentStep === 'done' ? (isDark ? 'rgba(13, 168, 106, 0.2)' : '#E6F7EF') : (isDark ? '#23171C' : '#F0E6E9')),
-                color: currentStep === 'notifications'
-                  ? '#FFFFFF'
-                  : (currentStep === 'done' ? '#0DA86A' : (isDark ? '#7E6971' : '#99828B')),
-                boxShadow: currentStep === 'notifications' ? '0 2px 8px rgba(211, 69, 91, 0.35)' : 'none'
-              }}
-            >
-              {currentStep === 'done' ? (
-                <Check style={{ width: '12px', height: '12px', strokeWidth: 3 }} />
-              ) : (
-                <span>2</span>
-              )}
-              <span>Paso 2: Notificaciones</span>
-            </div>
-          </div>
-        </div>
-
         {/* ============================================================== */}
-        {/* STEP 1: INSTALL APP (CUSTOMIZED FOR IOS / ANDROID) */}
+        {/* SITUATION 1: ON WEB (NOT INSTALLED) -> ONLY INSTALL POPUP      */}
         {/* ============================================================== */}
-        {currentStep === 'install' && (
+        {!isAppInstalled ? (
           <div style={{ position: 'relative', zIndex: 1 }} className="animate-fade-in">
             {/* Device Badge */}
             <div style={{ textAlign: 'center', marginBottom: '14px' }}>
@@ -252,7 +166,7 @@ export function AppEntranceModal({ isOpen, onClose, pwa }) {
             <div style={{ textAlign: 'center', marginBottom: '18px' }}>
               <h3
                 style={{
-                  fontSize: '20px',
+                  fontSize: '21px',
                   fontWeight: 800,
                   color: isDark ? '#F7EFF2' : '#2A171D',
                   margin: '0 0 6px 0',
@@ -261,7 +175,7 @@ export function AppEntranceModal({ isOpen, onClose, pwa }) {
               >
                 {isIOS
                   ? 'Instala el App en tu iPhone'
-                  : 'Instala el App en tu Android'}
+                  : (isAndroid ? 'Instala el App en tu Android' : 'Instala Calistenia Asiática')}
               </h3>
               <p
                 style={{
@@ -272,8 +186,8 @@ export function AppEntranceModal({ isOpen, onClose, pwa }) {
                 }}
               >
                 {isIOS
-                  ? 'Apple exige instalar la app en tu pantalla de inicio para poder activar las notificaciones de entrenamiento.'
-                  : 'Instala la app para entrenar a pantalla completa y recibir las notificaciones diarias sin interrupciones.'}
+                  ? 'Agrega la app a tu pantalla de inicio para tener acceso a pantalla completa y poder recibir las notificaciones push de tus entrenamientos.'
+                  : 'Instala la aplicación en tu pantalla de inicio para entrenar a pantalla completa y habilitar los avisos diarios de entrenamiento.'}
               </p>
             </div>
 
@@ -386,17 +300,33 @@ export function AppEntranceModal({ isOpen, onClose, pwa }) {
                       3. Toca en "Agregar"
                     </span>
                     <span style={{ fontSize: '11.5px', color: isDark ? '#B8A2AB' : '#84626D' }}>
-                      Confirma arriba a la derecha. ¡Listo, ya tendrás el icono en tu pantalla!
+                      Confirma arriba a la derecha. ¡Listo, ya tendrás el icono instalado en tu pantalla!
                     </span>
                   </div>
+                </div>
+
+                <div
+                  style={{
+                    padding: '10px 12px',
+                    borderRadius: '12px',
+                    backgroundColor: isDark ? 'rgba(211, 69, 91, 0.12)' : '#FFF0F3',
+                    fontSize: '11.5px',
+                    color: '#D3455B',
+                    lineHeight: 1.4,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px'
+                  }}
+                >
+                  <Bell style={{ width: '15px', height: '15px', flexShrink: 0 }} />
+                  <span>Al abrir el app desde tu pantalla de inicio podrás activar las notificaciones.</span>
                 </div>
               </div>
             )}
 
-            {/* Android Guide */}
+            {/* Android / Desktop Guide */}
             {!isIOS && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' }}>
-                {/* 1-Click Native Install Button (if browser supports beforeinstallprompt) */}
                 {pwa?.isInstallable && (
                   <button
                     onClick={handleInstallClick}
@@ -424,7 +354,6 @@ export function AppEntranceModal({ isOpen, onClose, pwa }) {
                   </button>
                 )}
 
-                {/* Android Manual Steps Card */}
                 <div
                   style={{
                     padding: '14px',
@@ -438,12 +367,12 @@ export function AppEntranceModal({ isOpen, onClose, pwa }) {
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#D3455B', fontSize: '11.5px', fontWeight: 700 }}>
                     <Info style={{ width: '14px', height: '14px' }} />
-                    <span>¿Cómo instalar desde Chrome o navegador?</span>
+                    <span>Pasos en Chrome / Navegador:</span>
                   </div>
 
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '12px', color: isDark ? '#F7EFF2' : '#301D23' }}>
                     <MoreVertical style={{ width: '18px', height: '18px', color: '#D3455B', flexShrink: 0 }} />
-                    <span><strong>Paso 1:</strong> Toca en los <strong>3 puntos (⋮)</strong> arriba a la derecha en tu navegador.</span>
+                    <span><strong>Paso 1:</strong> Toca en los <strong>3 puntos (⋮)</strong> arriba a la derecha.</span>
                   </div>
 
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '12px', color: isDark ? '#F7EFF2' : '#301D23' }}>
@@ -451,13 +380,30 @@ export function AppEntranceModal({ isOpen, onClose, pwa }) {
                     <span><strong>Paso 2:</strong> Selecciona <strong>"Instalar aplicación"</strong> o <strong>"Agregar a la pantalla principal"</strong>.</span>
                   </div>
                 </div>
+
+                <div
+                  style={{
+                    padding: '10px 12px',
+                    borderRadius: '12px',
+                    backgroundColor: isDark ? 'rgba(211, 69, 91, 0.12)' : '#FFF0F3',
+                    fontSize: '11.5px',
+                    color: '#D3455B',
+                    lineHeight: 1.4,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px'
+                  }}
+                >
+                  <Bell style={{ width: '15px', height: '15px', flexShrink: 0 }} />
+                  <span>Al abrir el app instalada podrás activar las notificaciones push.</span>
+                </div>
               </div>
             )}
 
-            {/* Advance to Step 2 Button */}
+            {/* Buttons */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               <button
-                onClick={handleConfirmInstalled}
+                onClick={onClose}
                 style={{
                   width: '100%',
                   height: '48px',
@@ -476,31 +422,14 @@ export function AppEntranceModal({ isOpen, onClose, pwa }) {
                   transition: 'all 0.2s'
                 }}
               >
-                <span>¡Ya agregué la App! ➔ Paso 2</span>
-                <ArrowRight style={{ width: '16px', height: '16px' }} />
-              </button>
-
-              <button
-                onClick={onClose}
-                style={{
-                  height: '36px',
-                  background: 'none',
-                  border: 'none',
-                  color: isDark ? '#8A737C' : '#99828B',
-                  fontSize: '12.5px',
-                  cursor: 'pointer'
-                }}
-              >
-                Continuar al app por ahora
+                <span>Entendido, continuar</span>
               </button>
             </div>
           </div>
-        )}
-
-        {/* ============================================================== */}
-        {/* STEP 2: NOTIFICATIONS (ONLY REACHED AFTER STEP 1) */}
-        {/* ============================================================== */}
-        {currentStep === 'notifications' && (
+        ) : (
+          /* ============================================================== */
+          /* SITUATION 2: IN INSTALLED APP (STANDALONE) -> NOTIFICATIONS    */
+          /* ============================================================== */
           <div style={{ position: 'relative', zIndex: 1 }} className="animate-fade-in">
             {/* Header Icon */}
             <div style={{ textAlign: 'center', marginBottom: '16px' }}>
@@ -509,16 +438,23 @@ export function AppEntranceModal({ isOpen, onClose, pwa }) {
                   width: '64px',
                   height: '64px',
                   borderRadius: '22px',
-                  backgroundColor: '#D3455B',
+                  backgroundColor: notifResult === 'granted' ? '#0DA86A' : '#D3455B',
                   color: '#FFFFFF',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   margin: '0 auto 12px auto',
-                  boxShadow: '0 8px 24px -4px rgba(211, 69, 91, 0.45)'
+                  boxShadow: notifResult === 'granted'
+                    ? '0 8px 24px -4px rgba(13, 168, 106, 0.45)'
+                    : '0 8px 24px -4px rgba(211, 69, 91, 0.45)',
+                  transition: 'all 0.3s ease'
                 }}
               >
-                <Bell style={{ width: '32px', height: '32px' }} />
+                {notifResult === 'granted' ? (
+                  <CheckCircle2 style={{ width: '34px', height: '34px' }} />
+                ) : (
+                  <Bell style={{ width: '32px', height: '32px' }} />
+                )}
               </div>
 
               <span
@@ -536,19 +472,21 @@ export function AppEntranceModal({ isOpen, onClose, pwa }) {
                 }}
               >
                 <Check style={{ width: '12px', height: '12px', strokeWidth: 3 }} />
-                App lista en tu pantalla
+                App instalada en tu dispositivo
               </span>
 
               <h3
                 style={{
-                  fontSize: '20px',
+                  fontSize: '21px',
                   fontWeight: 800,
                   color: isDark ? '#F7EFF2' : '#2A171D',
                   margin: '0 0 6px 0',
                   letterSpacing: '-0.02em'
                 }}
               >
-                Ahora, Activa las Notificaciones
+                {notifResult === 'granted'
+                  ? '¡Notificaciones Activadas!'
+                  : 'Activa tus Notificaciones Push'}
               </h3>
 
               <p
@@ -559,167 +497,152 @@ export function AppEntranceModal({ isOpen, onClose, pwa }) {
                   lineHeight: 1.45
                 }}
               >
-                Recibe los recordatorios diarios para completar tus 21 días de entrenamiento, avisos de dieta y mensajes del coach.
+                {notifResult === 'granted'
+                  ? '¡Excelente! Ahora recibirás las alertas de tus entrenamientos diarios de 21 días.'
+                  : 'Recibe alertas matutinas de tu entrenamiento, recordatorios de hidratación y avisos del coach.'}
               </p>
             </div>
 
-            {/* Notification Preview Mock */}
-            <div
-              style={{
-                padding: '14px',
-                borderRadius: '18px',
-                backgroundColor: isDark ? '#1F1418' : '#FFF7F8',
-                border: isDark ? '1px solid #332026' : '1px solid #F5DEE3',
-                marginBottom: '20px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '12px'
-              }}
-            >
+            {/* Notification Preview Mock (if not yet granted) */}
+            {notifResult !== 'granted' && (
               <div
                 style={{
-                  width: '40px',
-                  height: '40px',
-                  borderRadius: '12px',
-                  backgroundColor: '#D3455B',
-                  color: '#FFFFFF',
+                  padding: '14px',
+                  borderRadius: '18px',
+                  backgroundColor: isDark ? '#1F1418' : '#FFF7F8',
+                  border: isDark ? '1px solid #332026' : '1px solid #F5DEE3',
+                  marginBottom: '20px',
                   display: 'flex',
                   alignItems: 'center',
-                  justifyContent: 'center',
-                  flexShrink: 0
+                  gap: '12px'
                 }}
               >
-                <Flame style={{ width: '22px', height: '22px' }} />
-              </div>
-
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <span style={{ fontSize: '11px', fontWeight: 700, color: '#D3455B', textTransform: 'uppercase' }}>
-                    Calistenia Asiática
-                  </span>
-                  <span style={{ fontSize: '10px', color: isDark ? '#8A737C' : '#99828B' }}>
-                    • Ahora
-                  </span>
+                <div
+                  style={{
+                    width: '40px',
+                    height: '40px',
+                    borderRadius: '12px',
+                    backgroundColor: '#D3455B',
+                    color: '#FFFFFF',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0
+                  }}
+                >
+                  <Flame style={{ width: '22px', height: '22px' }} />
                 </div>
-                <h5 style={{ fontSize: '13px', fontWeight: 700, margin: '2px 0 0 0', color: isDark ? '#F7EFF2' : '#301D23' }}>
-                  ¡Tu entrenamiento de hoy te espera! 🔥
-                </h5>
-                <p style={{ fontSize: '11.5px', color: isDark ? '#B8A2AB' : '#72555F', margin: '2px 0 0 0' }}>
-                  Mantén tu racha de 21 días para transformar tu cuerpo.
-                </p>
+
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span style={{ fontSize: '11px', fontWeight: 700, color: '#D3455B', textTransform: 'uppercase' }}>
+                      Calistenia Asiática
+                    </span>
+                    <span style={{ fontSize: '10px', color: isDark ? '#8A737C' : '#99828B' }}>
+                      • Ahora
+                    </span>
+                  </div>
+                  <h5 style={{ fontSize: '13px', fontWeight: 700, margin: '2px 0 0 0', color: isDark ? '#F7EFF2' : '#301D23' }}>
+                    ¡Tu entrenamiento de hoy te espera! 🔥
+                  </h5>
+                  <p style={{ fontSize: '11.5px', color: isDark ? '#B8A2AB' : '#72555F', margin: '2px 0 0 0' }}>
+                    Mantén tu racha de 21 días para transformar tu cuerpo.
+                  </p>
+                </div>
               </div>
-            </div>
+            )}
+
+            {/* Feedback message if denied */}
+            {notifResult === 'denied' && (
+              <div
+                style={{
+                  padding: '10px 14px',
+                  borderRadius: '14px',
+                  backgroundColor: isDark ? 'rgba(222, 59, 64, 0.15)' : '#FDE8E9',
+                  border: '1px solid #DE3B40',
+                  color: '#DE3B40',
+                  fontSize: '12px',
+                  lineHeight: 1.4,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  marginBottom: '16px'
+                }}
+              >
+                <AlertTriangle style={{ width: '16px', height: '16px', flexShrink: 0 }} />
+                <span>Las notificaciones están bloqueadas en los ajustes de tu navegador o teléfono.</span>
+              </div>
+            )}
 
             {/* Action Buttons */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <button
-                onClick={handleActivateNotifications}
-                disabled={isRequestingNotif}
-                style={{
-                  width: '100%',
-                  height: '50px',
-                  borderRadius: '16px',
-                  backgroundColor: '#D3455B',
-                  color: '#FFFFFF',
-                  fontSize: '14.5px',
-                  fontWeight: 700,
-                  border: 'none',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px',
-                  boxShadow: '0 6px 20px -2px rgba(211, 69, 91, 0.45)',
-                  transition: 'all 0.2s'
-                }}
-              >
-                <Bell style={{ width: '18px', height: '18px' }} />
-                <span>{isRequestingNotif ? 'Activando...' : 'Permitir Notificaciones'}</span>
-              </button>
+              {notifResult === 'granted' ? (
+                <button
+                  onClick={onClose}
+                  style={{
+                    width: '100%',
+                    height: '50px',
+                    borderRadius: '16px',
+                    backgroundColor: '#0DA86A',
+                    color: '#FFFFFF',
+                    fontSize: '14.5px',
+                    fontWeight: 700,
+                    border: 'none',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    boxShadow: '0 6px 20px -2px rgba(13, 168, 106, 0.4)',
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  <Zap style={{ width: '18px', height: '18px' }} />
+                  <span>Comenzar a Entrenar</span>
+                </button>
+              ) : (
+                <>
+                  <button
+                    onClick={handleRequestNotifications}
+                    disabled={isRequestingNotif}
+                    style={{
+                      width: '100%',
+                      height: '50px',
+                      borderRadius: '16px',
+                      backgroundColor: '#D3455B',
+                      color: '#FFFFFF',
+                      fontSize: '14.5px',
+                      fontWeight: 700,
+                      border: 'none',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '8px',
+                      boxShadow: '0 6px 20px -2px rgba(211, 69, 91, 0.45)',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    <Bell style={{ width: '18px', height: '18px' }} />
+                    <span>{isRequestingNotif ? 'Activando...' : 'Permitir Notificaciones'}</span>
+                  </button>
 
-              <button
-                onClick={onClose}
-                style={{
-                  height: '36px',
-                  background: 'none',
-                  border: 'none',
-                  color: isDark ? '#8A737C' : '#99828B',
-                  fontSize: '12.5px',
-                  cursor: 'pointer'
-                }}
-              >
-                Recordarme más tarde
-              </button>
+                  <button
+                    onClick={onClose}
+                    style={{
+                      height: '36px',
+                      background: 'none',
+                      border: 'none',
+                      color: isDark ? '#8A737C' : '#99828B',
+                      fontSize: '12.5px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Recordarme más tarde
+                  </button>
+                </>
+              )}
             </div>
-          </div>
-        )}
-
-        {/* ============================================================== */}
-        {/* STEP 3: SUCCESS / DONE */}
-        {/* ============================================================== */}
-        {currentStep === 'done' && (
-          <div style={{ position: 'relative', zIndex: 1, textAlign: 'center' }} className="animate-fade-in">
-            <div
-              style={{
-                width: '70px',
-                height: '70px',
-                borderRadius: '9999px',
-                backgroundColor: 'rgba(13, 168, 106, 0.15)',
-                color: '#0DA86A',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                margin: '10px auto 16px auto'
-              }}
-            >
-              <CheckCircle2 style={{ width: '42px', height: '42px' }} />
-            </div>
-
-            <h3
-              style={{
-                fontSize: '21px',
-                fontWeight: 800,
-                color: isDark ? '#F7EFF2' : '#2A171D',
-                margin: '0 0 8px 0'
-              }}
-            >
-              ¡Configuración Completada!
-            </h3>
-
-            <p
-              style={{
-                fontSize: '13px',
-                color: isDark ? '#B8A2AB' : '#72555F',
-                margin: '0 0 24px 0',
-                lineHeight: 1.5
-              }}
-            >
-              Ya tienes Calistenia Asiática lista para entrenar con notificaciones automáticas en tu dispositivo.
-            </p>
-
-            <button
-              onClick={onClose}
-              style={{
-                width: '100%',
-                height: '50px',
-                borderRadius: '16px',
-                backgroundColor: '#0DA86A',
-                color: '#FFFFFF',
-                fontSize: '15px',
-                fontWeight: 700,
-                border: 'none',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '8px',
-                boxShadow: '0 6px 20px -2px rgba(13, 168, 106, 0.4)',
-                transition: 'all 0.2s'
-              }}
-            >
-              <Zap style={{ width: '18px', height: '18px' }} />
-              <span>Entrar a Calistenia Asiática</span>
-            </button>
           </div>
         )}
       </div>

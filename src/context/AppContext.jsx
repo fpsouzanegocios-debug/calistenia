@@ -621,7 +621,8 @@ export function AppProvider({ children }) {
         localStorage.removeItem(STORAGE_KEY);
         localStorage.removeItem('calistenia_admin_mode');
         localStorage.removeItem('calistenia_pwa_installed');
-        sessionStorage.removeItem('calistenia_entrance_modal_seen');
+        sessionStorage.removeItem('calistenia_web_install_prompt_seen');
+        sessionStorage.removeItem('calistenia_app_notif_prompt_seen');
         localStorage.removeItem('generated-diet-plan');
         localStorage.removeItem('calistenia-workout-timer-state');
       } catch (e) {

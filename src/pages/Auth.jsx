@@ -60,7 +60,8 @@ export function Auth({ onNavigate }) {
         });
 
         if (typeof window !== 'undefined') {
-          sessionStorage.removeItem('calistenia_entrance_modal_seen');
+          sessionStorage.removeItem('calistenia_web_install_prompt_seen');
+          sessionStorage.removeItem('calistenia_app_notif_prompt_seen');
           localStorage.removeItem('calistenia_pwa_installed');
         }
 
@@ -103,7 +104,8 @@ export function Auth({ onNavigate }) {
         }
 
         if (typeof window !== 'undefined') {
-          sessionStorage.removeItem('calistenia_entrance_modal_seen');
+          sessionStorage.removeItem('calistenia_web_install_prompt_seen');
+          sessionStorage.removeItem('calistenia_app_notif_prompt_seen');
         }
 
         if (profile?.is_admin) {
