@@ -121,22 +121,30 @@ export function Admin({ onNavigate }) {
 
   // Duolingo Automatic Notifications Engine State
   const [autoTriggerMode, setAutoTriggerMode] = useState('streak_saver');
-  const [isTriggeringAuto, setIsTriggeringAuto] = useState(false);
+  const [triggeringMode, setTriggeringMode] = useState(null); // null | 'morning' | 'afternoon' | 'streak_saver'
+  const [autoTestTarget, setAutoTestTarget] = useState('me'); // 'me' | 'all'
   const [autoTriggerResult, setAutoTriggerResult] = useState(null);
 
   const handleTriggerAutomation = async (mode) => {
-    setIsTriggeringAuto(true);
+    setTriggeringMode(mode);
     setAutoTriggerResult(null);
     try {
+      const currentUid = user?.id || state.userProfile?.user_id || state.userProfile?.id;
+      const targetUserId = autoTestTarget === 'me' ? currentUid : null;
+
       const res = await supabase.functions.invoke('auto-notifications', {
-        body: { trigger: mode || autoTriggerMode }
+        body: {
+          trigger: mode,
+          test_user_id: targetUserId,
+          force: true // Garante que o teste não seja barrado pelas regras de anti-spam
+        }
       });
-      setAutoTriggerResult(res.data || res.error || { success: true });
+      setAutoTriggerResult(res.data || res.error || { success: true, trigger: mode });
       loadAdminData();
     } catch (e) {
       setAutoTriggerResult({ error: e.message || 'Erro ao executar o motor de notificações automáticas.' });
     } finally {
-      setIsTriggeringAuto(false);
+      setTriggeringMode(null);
     }
   };
 
@@ -2038,6 +2046,69 @@ export function Admin({ onNavigate }) {
             </div>
           </div>
 
+          {/* Test Target Selector (Choose Me vs All) */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              flexWrap: 'wrap',
+              gap: '12px',
+              padding: '16px 20px',
+              borderRadius: '20px',
+              backgroundColor: isDark ? '#181215' : '#FFFFFF',
+              border: isDark ? '1px solid #281E23' : '1px solid #EDE4E7',
+              boxShadow: isDark ? '0 2px 8px rgba(0,0,0,0.2)' : '0 2px 8px rgba(61,41,48,0.04)'
+            }}
+          >
+            <div>
+              <span style={{ fontSize: '13px', fontWeight: 700, color: isDark ? '#F7EFF2' : '#301D23', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span>🎯</span> Destinatário do Teste de Disparo:
+              </span>
+              <span style={{ fontSize: '11.5px', color: isDark ? '#B8A2AB' : '#84626D', marginTop: '2px', display: 'block' }}>
+                Selecione para onde enviar o teste ao clicar nos botões abaixo
+              </span>
+            </div>
+
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                onClick={() => setAutoTestTarget('me')}
+                style={{
+                  padding: '8px 14px',
+                  borderRadius: '12px',
+                  border: autoTestTarget === 'me' ? '1.5px solid #D3455B' : (isDark ? '1px solid #2D2226' : '1px solid #E9E2E4'),
+                  backgroundColor: autoTestTarget === 'me' ? (isDark ? 'rgba(211,69,91,0.18)' : '#FFF0F3') : 'transparent',
+                  color: autoTestTarget === 'me' ? '#D3455B' : (isDark ? '#F7EFF2' : '#4E363E'),
+                  fontSize: '12px',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                👤 Apenas Minha Conta ({userEmail || 'Admin'})
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setAutoTestTarget('all')}
+                style={{
+                  padding: '8px 14px',
+                  borderRadius: '12px',
+                  border: autoTestTarget === 'all' ? '1.5px solid #D3455B' : (isDark ? '1px solid #2D2226' : '1px solid #E9E2E4'),
+                  backgroundColor: autoTestTarget === 'all' ? (isDark ? 'rgba(211,69,91,0.18)' : '#FFF0F3') : 'transparent',
+                  color: autoTestTarget === 'all' ? '#D3455B' : (isDark ? '#F7EFF2' : '#4E363E'),
+                  fontSize: '12px',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                🌍 Todos os Alunos ({totalUsers})
+              </button>
+            </div>
+          </div>
+
           {/* Schedule Cards Grid */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
             {/* Card 1: Manhã */}
@@ -2072,7 +2143,7 @@ export function Admin({ onNavigate }) {
               <button
                 type="button"
                 onClick={() => handleTriggerAutomation('morning')}
-                disabled={isTriggeringAuto}
+                disabled={triggeringMode !== null}
                 style={{
                   marginTop: '16px',
                   width: '100%',
@@ -2083,15 +2154,16 @@ export function Admin({ onNavigate }) {
                   color: '#D3455B',
                   fontSize: '12px',
                   fontWeight: 700,
-                  cursor: isTriggeringAuto ? 'not-allowed' : 'pointer',
+                  cursor: triggeringMode !== null ? 'not-allowed' : 'pointer',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  gap: '6px'
+                  gap: '6px',
+                  opacity: triggeringMode !== null && triggeringMode !== 'morning' ? 0.5 : 1
                 }}
               >
-                <Zap style={{ width: '14px', height: '14px' }} />
-                <span>{isTriggeringAuto ? 'Disparando...' : 'Testar Disparo da Manhã'}</span>
+                <Zap style={{ width: '14px', height: '14px' }} className={triggeringMode === 'morning' ? 'animate-spin' : ''} />
+                <span>{triggeringMode === 'morning' ? 'Disparando Manhã...' : 'Testar Disparo da Manhã'}</span>
               </button>
             </div>
 
@@ -2127,7 +2199,7 @@ export function Admin({ onNavigate }) {
               <button
                 type="button"
                 onClick={() => handleTriggerAutomation('afternoon')}
-                disabled={isTriggeringAuto}
+                disabled={triggeringMode !== null}
                 style={{
                   marginTop: '16px',
                   width: '100%',
@@ -2138,15 +2210,16 @@ export function Admin({ onNavigate }) {
                   color: '#D3455B',
                   fontSize: '12px',
                   fontWeight: 700,
-                  cursor: isTriggeringAuto ? 'not-allowed' : 'pointer',
+                  cursor: triggeringMode !== null ? 'not-allowed' : 'pointer',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  gap: '6px'
+                  gap: '6px',
+                  opacity: triggeringMode !== null && triggeringMode !== 'afternoon' ? 0.5 : 1
                 }}
               >
-                <Zap style={{ width: '14px', height: '14px' }} />
-                <span>{isTriggeringAuto ? 'Disparando...' : 'Testar Disparo da Tarde'}</span>
+                <Zap style={{ width: '14px', height: '14px' }} className={triggeringMode === 'afternoon' ? 'animate-spin' : ''} />
+                <span>{triggeringMode === 'afternoon' ? 'Disparando Tarde...' : 'Testar Disparo da Tarde'}</span>
               </button>
             </div>
 
@@ -2183,7 +2256,7 @@ export function Admin({ onNavigate }) {
               <button
                 type="button"
                 onClick={() => handleTriggerAutomation('streak_saver')}
-                disabled={isTriggeringAuto}
+                disabled={triggeringMode !== null}
                 style={{
                   marginTop: '16px',
                   width: '100%',
@@ -2194,16 +2267,17 @@ export function Admin({ onNavigate }) {
                   color: '#FFFFFF',
                   fontSize: '12px',
                   fontWeight: 800,
-                  cursor: isTriggeringAuto ? 'not-allowed' : 'pointer',
+                  cursor: triggeringMode !== null ? 'not-allowed' : 'pointer',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   gap: '6px',
-                  boxShadow: '0 4px 14px rgba(255, 87, 34, 0.35)'
+                  boxShadow: '0 4px 14px rgba(255, 87, 34, 0.35)',
+                  opacity: triggeringMode !== null && triggeringMode !== 'streak_saver' ? 0.5 : 1
                 }}
               >
-                <Flame style={{ width: '14px', height: '14px' }} />
-                <span>{isTriggeringAuto ? 'Disparando...' : 'Disparar Salvar Ofensiva Agora'}</span>
+                <Flame style={{ width: '14px', height: '14px' }} className={triggeringMode === 'streak_saver' ? 'animate-bounce' : ''} />
+                <span>{triggeringMode === 'streak_saver' ? 'Disparando Ofensiva...' : 'Disparar Salvar Ofensiva Agora'}</span>
               </button>
             </div>
           </div>
@@ -2221,11 +2295,13 @@ export function Admin({ onNavigate }) {
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
                 <h4 style={{ fontSize: '15px', fontWeight: 700, margin: 0, color: isDark ? '#F7EFF2' : '#301D23', display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <CheckCircle style={{ width: '18px', height: '18px', color: '#0DA86A' }} />
-                  Resultado da Execução do Motor Automático:
+                  <span>
+                    Resultado do Disparo ({autoTriggerResult.trigger === 'morning' ? 'Manhã' : autoTriggerResult.trigger === 'afternoon' ? 'Tarde' : 'Salvar Ofensiva'}):
+                  </span>
                 </h4>
                 <button
                   onClick={() => setAutoTriggerResult(null)}
-                  style={{ background: 'none', border: 'none', color: isDark ? '#B8A2AB' : '#84626D', cursor: 'pointer', fontSize: '12px' }}
+                  style={{ background: 'none', border: 'none', color: isDark ? '#B8A2AB' : '#84626D', cursor: 'pointer', fontSize: '12px', fontWeight: 600 }}
                 >
                   Fechar
                 </button>
@@ -2233,59 +2309,80 @@ export function Admin({ onNavigate }) {
 
               {/* Metrics row */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '10px', marginBottom: '16px' }}>
-                <div style={{ padding: '12px', borderRadius: '14px', backgroundColor: isDark ? '#221A1E' : '#F7F2F4' }}>
-                  <span style={{ fontSize: '11px', color: isDark ? '#B8A2AB' : '#84626D', display: 'block' }}>Alunos Avaliados</span>
-                  <span style={{ fontSize: '18px', fontWeight: 800, color: isDark ? '#F7EFF2' : '#301D23' }}>{autoTriggerResult.processed || 0}</span>
-                </div>
                 <div style={{ padding: '12px', borderRadius: '14px', backgroundColor: isDark ? 'rgba(13, 168, 106, 0.15)' : '#EDF7F0' }}>
-                  <span style={{ fontSize: '11px', color: '#0DA86A', display: 'block' }}>Notificações Enviadas</span>
-                  <span style={{ fontSize: '18px', fontWeight: 800, color: '#0DA86A' }}>{autoTriggerResult.sent || 0}</span>
+                  <span style={{ fontSize: '11px', color: '#0DA86A', display: 'block', fontWeight: 600 }}>Notificações Enviadas</span>
+                  <span style={{ fontSize: '20px', fontWeight: 800, color: '#0DA86A' }}>{autoTriggerResult.sent || 0}</span>
                 </div>
                 <div style={{ padding: '12px', borderRadius: '14px', backgroundColor: isDark ? '#221A1E' : '#F7F2F4' }}>
-                  <span style={{ fontSize: '11px', color: isDark ? '#B8A2AB' : '#84626D', display: 'block' }}>Já Haviam Treinado Hoje</span>
-                  <span style={{ fontSize: '18px', fontWeight: 800, color: isDark ? '#F7EFF2' : '#301D23' }}>{autoTriggerResult.skipped_already_trained || 0}</span>
+                  <span style={{ fontSize: '11px', color: isDark ? '#B8A2AB' : '#84626D', display: 'block' }}>Alunos Processados</span>
+                  <span style={{ fontSize: '20px', fontWeight: 800, color: isDark ? '#F7EFF2' : '#301D23' }}>{autoTriggerResult.processed || 0}</span>
                 </div>
                 <div style={{ padding: '12px', borderRadius: '14px', backgroundColor: isDark ? '#221A1E' : '#F7F2F4' }}>
-                  <span style={{ fontSize: '11px', color: isDark ? '#B8A2AB' : '#84626D', display: 'block' }}>Ignorados por Anti-Spam (4h)</span>
-                  <span style={{ fontSize: '18px', fontWeight: 800, color: isDark ? '#F7EFF2' : '#301D23' }}>{autoTriggerResult.skipped_recent || 0}</span>
+                  <span style={{ fontSize: '11px', color: isDark ? '#B8A2AB' : '#84626D', display: 'block' }}>Já Treinaram Hoje</span>
+                  <span style={{ fontSize: '20px', fontWeight: 800, color: isDark ? '#F7EFF2' : '#301D23' }}>{autoTriggerResult.skipped_already_trained || 0}</span>
+                </div>
+                <div style={{ padding: '12px', borderRadius: '14px', backgroundColor: isDark ? '#221A1E' : '#F7F2F4' }}>
+                  <span style={{ fontSize: '11px', color: isDark ? '#B8A2AB' : '#84626D', display: 'block' }}>Ignorados Anti-Spam (4h)</span>
+                  <span style={{ fontSize: '20px', fontWeight: 800, color: isDark ? '#F7EFF2' : '#301D23' }}>{autoTriggerResult.skipped_recent || 0}</span>
                 </div>
               </div>
 
               {/* Detailed results list */}
               {autoTriggerResult.results && autoTriggerResult.results.length > 0 && (
-                <div style={{ maxHeight: '200px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  {autoTriggerResult.results.map((r, i) => (
-                    <div
-                      key={i}
-                      style={{
-                        padding: '10px 14px',
-                        borderRadius: '12px',
-                        backgroundColor: isDark ? '#20181C' : '#FAFAFA',
-                        border: isDark ? '1px solid #2B2025' : '1px solid #EFE6E8',
-                        fontSize: '12px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        gap: '12px'
-                      }}
-                    >
-                      <div>
-                        <strong>{r.email}</strong>: {r.title || r.status}
-                      </div>
-                      <span
+                <div style={{ maxHeight: '220px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {autoTriggerResult.results.map((r, i) => {
+                    const isSuccess = r.status === 'sent_push_and_app' || r.status === 'sent_in_app_only' || r.status === 'sent';
+                    return (
+                      <div
+                        key={i}
                         style={{
-                          padding: '3px 8px',
-                          borderRadius: '8px',
-                          fontSize: '11px',
-                          fontWeight: 700,
-                          backgroundColor: r.status === 'sent' ? 'rgba(13, 168, 106, 0.15)' : (isDark ? '#2C2126' : '#ECE2E5'),
-                          color: r.status === 'sent' ? '#0DA86A' : (isDark ? '#B8A2AB' : '#84626D')
+                          padding: '12px 14px',
+                          borderRadius: '14px',
+                          backgroundColor: isDark ? '#20181C' : '#FAFAFA',
+                          border: isDark ? '1px solid #2B2025' : '1px solid #EFE6E8',
+                          fontSize: '12px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          flexWrap: 'wrap',
+                          gap: '10px'
                         }}
                       >
-                        {r.status === 'sent' ? `Push Enviado (${r.devices_pushed || 0} dispositivos)` : r.status}
-                      </span>
-                    </div>
-                  ))}
+                        <div style={{ minWidth: 0, flex: 1 }}>
+                          <div style={{ fontWeight: 700, color: isDark ? '#F7EFF2' : '#301D23' }}>
+                            {r.email}
+                          </div>
+                          {r.title && (
+                            <div style={{ fontSize: '11.5px', color: '#D3455B', marginTop: '2px', fontStyle: 'italic' }}>
+                              "{r.title}" — {r.message}
+                            </div>
+                          )}
+                        </div>
+
+                        <span
+                          style={{
+                            padding: '4px 10px',
+                            borderRadius: '8px',
+                            fontSize: '11px',
+                            fontWeight: 700,
+                            backgroundColor: isSuccess ? 'rgba(13, 168, 106, 0.15)' : (isDark ? '#2C2126' : '#ECE2E5'),
+                            color: isSuccess ? '#0DA86A' : (isDark ? '#B8A2AB' : '#84626D'),
+                            whiteSpace: 'nowrap'
+                          }}
+                        >
+                          {r.status === 'sent_push_and_app' || (r.status === 'sent' && r.devices_pushed > 0)
+                            ? `🔔 Push Entregue (${r.devices_pushed || 1} aparelho(s))`
+                            : isSuccess
+                            ? '🔔 Entregue no App'
+                            : r.status === 'skipped_recent_notification'
+                            ? 'Pausa Anti-Spam (4h)'
+                            : r.status === 'skipped_trained_today'
+                            ? 'Já Treinou Hoje'
+                            : r.status}
+                        </span>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>
