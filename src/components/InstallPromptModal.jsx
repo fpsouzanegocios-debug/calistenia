@@ -9,7 +9,7 @@ export function InstallPromptModal({ isOpen, onClose, pwa, onInstall, isInstalla
   if (!isOpen) return null;
 
   const currentPlatform = platform || pwa?.platform || '';
-  const isIOS = currentPlatform.includes('iOS');
+  const isIOS = Boolean(pwa?.isIOS || currentPlatform.includes('iOS'));
   const installFn = onInstall || pwa?.installApp;
 
   const handleInstallClick = async () => {

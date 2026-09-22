@@ -19,12 +19,15 @@ export function usePWA(user) {
     if (typeof window === 'undefined') return 'Desconhecido';
     const ua = navigator.userAgent || '';
     if (/android/i.test(ua)) return 'Android';
-    if (/iphone|ipad|ipod/i.test(ua)) return 'iOS (iPhone/iPad)';
+    if (/iphone|ipad|ipod/i.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)) return 'iOS (iPhone/iPad)';
     if (/windows/i.test(ua)) return 'Windows PC';
     if (/macintosh|mac os x/i.test(ua)) return 'macOS';
     if (/linux/i.test(ua)) return 'Linux';
     return 'Web Browser';
   }, []);
+
+  const isIOS = typeof window !== 'undefined' && (/iphone|ipad|ipod/i.test(navigator.userAgent || '') || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1));
+  const isAndroid = typeof window !== 'undefined' && /android/i.test(navigator.userAgent || '');
 
   // Sync install status to Supabase
   const recordInstallation = useCallback(async (deviceDetails) => {
@@ -120,6 +123,8 @@ export function usePWA(user) {
     isInstallable,
     isInstalled,
     platform,
+    isIOS,
+    isAndroid,
     installApp,
     recordInstallation
   };
