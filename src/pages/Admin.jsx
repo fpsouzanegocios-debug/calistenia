@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { supabase } from '../lib/supabase';
 import { useApp } from '../context/AppContext';
 import {
   ArrowLeft,
@@ -6,6 +7,7 @@ import {
   Smartphone,
   Send,
   Bell,
+  Zap,
   CheckCircle,
   Clock,
   Flame,
@@ -63,6 +65,27 @@ export function Admin({ onNavigate }) {
   const [isSending, setIsSending] = useState(false);
   const [sendSuccessMessage, setSendSuccessMessage] = useState('');
   const [sendErrorMessage, setSendErrorMessage] = useState('');
+
+  // Duolingo Automatic Notifications Engine State
+  const [autoTriggerMode, setAutoTriggerMode] = useState('streak_saver');
+  const [isTriggeringAuto, setIsTriggeringAuto] = useState(false);
+  const [autoTriggerResult, setAutoTriggerResult] = useState(null);
+
+  const handleTriggerAutomation = async (mode) => {
+    setIsTriggeringAuto(true);
+    setAutoTriggerResult(null);
+    try {
+      const res = await supabase.functions.invoke('auto-notifications', {
+        body: { trigger: mode || autoTriggerMode }
+      });
+      setAutoTriggerResult(res.data || res.error || { success: true });
+      loadAdminData();
+    } catch (e) {
+      setAutoTriggerResult({ error: e.message || 'Error al ejecutar motor de notificaciones.' });
+    } finally {
+      setIsTriggeringAuto(false);
+    }
+  };
 
   const loadAdminData = async () => {
     setLoading(true);
@@ -634,6 +657,30 @@ export function Admin({ onNavigate }) {
         >
           <Sparkles style={{ width: '16px', height: '16px' }} />
           <span>IA DeepSeek</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('automation')}
+          style={{
+            flex: 1,
+            height: '42px',
+            borderRadius: '14px',
+            border: 'none',
+            backgroundColor: activeTab === 'automation' ? (isDark ? '#221A1E' : '#FFFFFF') : 'transparent',
+            color: activeTab === 'automation' ? '#FF5722' : (isDark ? '#B8A2AB' : '#84626D'),
+            fontWeight: activeTab === 'automation' ? 700 : 500,
+            fontSize: '13px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '8px',
+            cursor: 'pointer',
+            boxShadow: activeTab === 'automation' ? '0 2px 8px rgba(0,0,0,0.06)' : 'none',
+            transition: 'all 0.2s ease'
+          }}
+        >
+          <Flame style={{ width: '16px', height: '16px', color: '#FF5722' }} />
+          <span>Auto (Duolingo)</span>
         </button>
       </div>
 
@@ -1785,6 +1832,337 @@ export function Admin({ onNavigate }) {
               💡 Una vez guardada, el modelo <strong>deepseek-chat</strong> responderá a todas las preguntas de las atletas instantáneamente en Soporte 24h, exactamente como en la aplicación original.
             </p>
           </div>
+        </div>
+      )}
+
+      {/* TAB 5: DUOLINGO-STYLE AUTOMATED NOTIFICATIONS */}
+      {activeTab === 'automation' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '22px' }} className="animate-fade-in">
+          {/* Header Card */}
+          <div
+            style={{
+              backgroundColor: isDark ? '#181215' : '#FFFFFF',
+              borderRadius: '26px',
+              padding: '24px',
+              border: isDark ? '1px solid #281E23' : '1px solid #EDE4E7',
+              boxShadow: isDark ? '0 4px 20px rgba(0,0,0,0.35)' : '0 4px 20px rgba(61,41,48,0.06)'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '14px', marginBottom: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div
+                  style={{
+                    width: '46px',
+                    height: '46px',
+                    borderRadius: '14px',
+                    backgroundColor: 'rgba(255, 87, 34, 0.15)',
+                    color: '#FF5722',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                >
+                  <Flame style={{ width: '24px', height: '24px' }} />
+                </div>
+                <div>
+                  <h3 style={{ fontSize: '18px', fontWeight: 800, margin: 0, color: isDark ? '#F7EFF2' : '#301D23' }}>
+                    Motor de Notificaciones Automáticas (Estilo Duolingo)
+                  </h3>
+                  <p style={{ fontSize: '12.5px', color: isDark ? '#B8A2AB' : '#84626D', margin: '2px 0 0 0' }}>
+                    Gatillos comportamentales en la nube para mantener encendida la racha del Desafío 21 Días.
+                  </p>
+                </div>
+              </div>
+
+              {/* Status Badge */}
+              <div
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '6px 14px',
+                  borderRadius: '9999px',
+                  backgroundColor: isDark ? 'rgba(13, 168, 106, 0.15)' : '#E6F7EF',
+                  border: isDark ? '1px solid rgba(13, 168, 106, 0.3)' : '1px solid #BEE7D3',
+                  color: '#0DA86A',
+                  fontSize: '12px',
+                  fontWeight: 700
+                }}
+              >
+                <div style={{ width: '8px', height: '8px', borderRadius: '9999px', backgroundColor: '#0DA86A' }} />
+                <span>3 Cron Jobs Activos en Supabase Cloud</span>
+              </div>
+            </div>
+
+            {/* Smart Rules Badges */}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '14px' }}>
+              <div style={{ padding: '6px 12px', borderRadius: '12px', backgroundColor: isDark ? '#221A1E' : '#F6EFF1', fontSize: '11.5px', color: isDark ? '#F7EFF2' : '#4E363E', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span>🛡️</span> <strong>Filtro Anti-Molestia:</strong> Omite a quien ya entrenó hoy
+              </div>
+              <div style={{ padding: '6px 12px', borderRadius: '12px', backgroundColor: isDark ? '#221A1E' : '#F6EFF1', fontSize: '11.5px', color: isDark ? '#F7EFF2' : '#4E363E', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span>🎯</span> <strong>Día Dinámico:</strong> Calcula el Día (1-21) exacto del alumno
+              </div>
+              <div style={{ padding: '6px 12px', borderRadius: '12px', backgroundColor: isDark ? '#221A1E' : '#F6EFF1', fontSize: '11.5px', color: isDark ? '#F7EFF2' : '#4E363E', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span>🛑</span> <strong>Anti-Spam:</strong> Máximo 1 aviso cada 4 horas
+              </div>
+              <div style={{ padding: '6px 12px', borderRadius: '12px', backgroundColor: isDark ? '#221A1E' : '#F6EFF1', fontSize: '11.5px', color: isDark ? '#F7EFF2' : '#4E363E', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span>🥋</span> <strong>Rescate:</strong> Alerta de reenganche si lleva +24h ausente
+              </div>
+            </div>
+          </div>
+
+          {/* Schedule Cards Grid */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
+            {/* Card 1: Mañana */}
+            <div
+              style={{
+                backgroundColor: isDark ? '#181215' : '#FFFFFF',
+                borderRadius: '22px',
+                padding: '20px',
+                border: isDark ? '1px solid #281E23' : '1px solid #EDE4E7',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'space-between'
+              }}
+            >
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+                  <span style={{ fontSize: '24px' }}>🌅</span>
+                  <span style={{ padding: '4px 10px', borderRadius: '9999px', backgroundColor: isDark ? '#251D21' : '#F5ECEE', fontSize: '11px', fontWeight: 700, color: '#D3455B' }}>
+                    08:30 (Mañana)
+                  </span>
+                </div>
+                <h4 style={{ fontSize: '15px', fontWeight: 700, margin: '0 0 6px 0', color: isDark ? '#F7EFF2' : '#301D23' }}>
+                  Despertar & Postura
+                </h4>
+                <p style={{ fontSize: '12px', color: isDark ? '#B8A2AB' : '#84626D', lineHeight: 1.5, margin: 0 }}>
+                  Activa el metabolismo matutino e invita al alumno a iniciar el día con 15 min de calistenia.
+                </p>
+                <div style={{ marginTop: '14px', padding: '10px 12px', borderRadius: '12px', backgroundColor: isDark ? '#20181C' : '#FAFAFA', border: isDark ? '1px solid #2A1F24' : '1px solid #F0E6E9', fontSize: '11.5px', color: isDark ? '#D9C5CD' : '#5C4850', fontStyle: 'italic' }}>
+                  "¡Despierta tu cuerpo! 🌿 15 minutos de calistenia hoy activarán tu metabolismo todo el día."
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => handleTriggerAutomation('morning')}
+                disabled={isTriggeringAuto}
+                style={{
+                  marginTop: '16px',
+                  width: '100%',
+                  height: '38px',
+                  borderRadius: '12px',
+                  backgroundColor: isDark ? '#251D21' : '#F7F0F2',
+                  border: '1px solid rgba(211,69,91,0.2)',
+                  color: '#D3455B',
+                  fontSize: '12px',
+                  fontWeight: 700,
+                  cursor: isTriggeringAuto ? 'not-allowed' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px'
+                }}
+              >
+                <Zap style={{ width: '14px', height: '14px' }} />
+                <span>{isTriggeringAuto ? 'Disparando...' : 'Probar Gatillo de Mañana'}</span>
+              </button>
+            </div>
+
+            {/* Card 2: Tarde */}
+            <div
+              style={{
+                backgroundColor: isDark ? '#181215' : '#FFFFFF',
+                borderRadius: '22px',
+                padding: '20px',
+                border: isDark ? '1px solid #281E23' : '1px solid #EDE4E7',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'space-between'
+              }}
+            >
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+                  <span style={{ fontSize: '24px' }}>⚡</span>
+                  <span style={{ padding: '4px 10px', borderRadius: '9999px', backgroundColor: isDark ? '#251D21' : '#F5ECEE', fontSize: '11px', fontWeight: 700, color: '#D3455B' }}>
+                    15:00 (Tarde)
+                  </span>
+                </div>
+                <h4 style={{ fontSize: '15px', fontWeight: 700, margin: '0 0 6px 0', color: isDark ? '#F7EFF2' : '#301D23' }}>
+                  Recarga de Media Tarde
+                </h4>
+                <p style={{ fontSize: '12px', color: isDark ? '#B8A2AB' : '#84626D', lineHeight: 1.5, margin: 0 }}>
+                  Rescata al alumno del bajón post-almuerzo y le recuerda que su sesión sigue esperándolo.
+                </p>
+                <div style={{ marginTop: '14px', padding: '10px 12px', borderRadius: '12px', backgroundColor: isDark ? '#20181C' : '#FAFAFA', border: isDark ? '1px solid #2A1F24' : '1px solid #F0E6E9', fontSize: '11.5px', color: isDark ? '#D9C5CD' : '#5C4850', fontStyle: 'italic' }}>
+                  "¿Cansancio de media tarde? ⚡ Una sesión breve de calistenia oxigenará tu mente y cuerpo."
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => handleTriggerAutomation('afternoon')}
+                disabled={isTriggeringAuto}
+                style={{
+                  marginTop: '16px',
+                  width: '100%',
+                  height: '38px',
+                  borderRadius: '12px',
+                  backgroundColor: isDark ? '#251D21' : '#F7F0F2',
+                  border: '1px solid rgba(211,69,91,0.2)',
+                  color: '#D3455B',
+                  fontSize: '12px',
+                  fontWeight: 700,
+                  cursor: isTriggeringAuto ? 'not-allowed' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px'
+                }}
+              >
+                <Zap style={{ width: '14px', height: '14px' }} />
+                <span>{isTriggeringAuto ? 'Disparando...' : 'Probar Gatillo de Tarde'}</span>
+              </button>
+            </div>
+
+            {/* Card 3: Salva tu Racha (Duolingo Style) */}
+            <div
+              style={{
+                backgroundColor: isDark ? '#1E1418' : '#FFF5F6',
+                borderRadius: '22px',
+                padding: '20px',
+                border: '1.5px solid #FF5722',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'space-between',
+                boxShadow: '0 4px 20px rgba(255, 87, 34, 0.12)'
+              }}
+            >
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+                  <span style={{ fontSize: '24px' }}>🔥</span>
+                  <span style={{ padding: '4px 10px', borderRadius: '9999px', backgroundColor: '#FF5722', fontSize: '11px', fontWeight: 800, color: '#FFFFFF' }}>
+                    20:00 (Salva tu Racha)
+                  </span>
+                </div>
+                <h4 style={{ fontSize: '15px', fontWeight: 800, margin: '0 0 6px 0', color: isDark ? '#F7EFF2' : '#301D23' }}>
+                  Aversión a la Pérdida (Duolingo)
+                </h4>
+                <p style={{ fontSize: '12px', color: isDark ? '#B8A2AB' : '#84626D', lineHeight: 1.5, margin: 0 }}>
+                  Alerta con urgencia a los alumnos que aún no han entrenado hoy para no perder el día del Desafío.
+                </p>
+                <div style={{ marginTop: '14px', padding: '10px 12px', borderRadius: '12px', backgroundColor: isDark ? '#170E12' : '#FFFFFF', border: isDark ? '1px solid #3D2228' : '1px solid #FCDADF', fontSize: '11.5px', color: '#D3455B', fontWeight: 600 }}>
+                  "¡Tu racha está en peligro! 🔥 No te vayas a dormir sin tu victoria, {nombre}. Completa el Día {X} antes de medianoche."
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => handleTriggerAutomation('streak_saver')}
+                disabled={isTriggeringAuto}
+                style={{
+                  marginTop: '16px',
+                  width: '100%',
+                  height: '38px',
+                  borderRadius: '12px',
+                  backgroundColor: '#FF5722',
+                  border: 'none',
+                  color: '#FFFFFF',
+                  fontSize: '12px',
+                  fontWeight: 800,
+                  cursor: isTriggeringAuto ? 'not-allowed' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                  boxShadow: '0 4px 14px rgba(255, 87, 34, 0.35)'
+                }}
+              >
+                <Flame style={{ width: '14px', height: '14px' }} />
+                <span>{isTriggeringAuto ? 'Disparando...' : 'Probar Salva tu Racha Ahora'}</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Test Engine Execution Feedback Card */}
+          {autoTriggerResult && (
+            <div
+              style={{
+                backgroundColor: isDark ? '#181215' : '#FFFFFF',
+                borderRadius: '22px',
+                padding: '22px',
+                border: isDark ? '1px solid #281E23' : '1px solid #EDE4E7'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+                <h4 style={{ fontSize: '15px', fontWeight: 700, margin: 0, color: isDark ? '#F7EFF2' : '#301D23', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <CheckCircle style={{ width: '18px', height: '18px', color: '#0DA86A' }} />
+                  Resultado de la Ejecución del Motor Automático:
+                </h4>
+                <button
+                  onClick={() => setAutoTriggerResult(null)}
+                  style={{ background: 'none', border: 'none', color: isDark ? '#B8A2AB' : '#84626D', cursor: 'pointer', fontSize: '12px' }}
+                >
+                  Cerrar
+                </button>
+              </div>
+
+              {/* Metrics row */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '10px', marginBottom: '16px' }}>
+                <div style={{ padding: '12px', borderRadius: '14px', backgroundColor: isDark ? '#221A1E' : '#F7F2F4' }}>
+                  <span style={{ fontSize: '11px', color: isDark ? '#B8A2AB' : '#84626D', display: 'block' }}>Alumnos Evaluados</span>
+                  <span style={{ fontSize: '18px', fontWeight: 800, color: isDark ? '#F7EFF2' : '#301D23' }}>{autoTriggerResult.processed || 0}</span>
+                </div>
+                <div style={{ padding: '12px', borderRadius: '14px', backgroundColor: isDark ? 'rgba(13, 168, 106, 0.15)' : '#EDF7F0' }}>
+                  <span style={{ fontSize: '11px', color: '#0DA86A', display: 'block' }}>Notificaciones Enviadas</span>
+                  <span style={{ fontSize: '18px', fontWeight: 800, color: '#0DA86A' }}>{autoTriggerResult.sent || 0}</span>
+                </div>
+                <div style={{ padding: '12px', borderRadius: '14px', backgroundColor: isDark ? '#221A1E' : '#F7F2F4' }}>
+                  <span style={{ fontSize: '11px', color: isDark ? '#B8A2AB' : '#84626D', display: 'block' }}>Ya Habían Entrenado Hoy</span>
+                  <span style={{ fontSize: '18px', fontWeight: 800, color: isDark ? '#F7EFF2' : '#301D23' }}>{autoTriggerResult.skipped_already_trained || 0}</span>
+                </div>
+                <div style={{ padding: '12px', borderRadius: '14px', backgroundColor: isDark ? '#221A1E' : '#F7F2F4' }}>
+                  <span style={{ fontSize: '11px', color: isDark ? '#B8A2AB' : '#84626D', display: 'block' }}>Omitidos por Anti-Spam (4h)</span>
+                  <span style={{ fontSize: '18px', fontWeight: 800, color: isDark ? '#F7EFF2' : '#301D23' }}>{autoTriggerResult.skipped_recent || 0}</span>
+                </div>
+              </div>
+
+              {/* Detailed results list */}
+              {autoTriggerResult.results && autoTriggerResult.results.length > 0 && (
+                <div style={{ maxHeight: '200px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {autoTriggerResult.results.map((r, i) => (
+                    <div
+                      key={i}
+                      style={{
+                        padding: '10px 14px',
+                        borderRadius: '12px',
+                        backgroundColor: isDark ? '#20181C' : '#FAFAFA',
+                        border: isDark ? '1px solid #2B2025' : '1px solid #EFE6E8',
+                        fontSize: '12px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: '12px'
+                      }}
+                    >
+                      <div>
+                        <strong>{r.email}</strong>: {r.title || r.status}
+                      </div>
+                      <span
+                        style={{
+                          padding: '3px 8px',
+                          borderRadius: '8px',
+                          fontSize: '11px',
+                          fontWeight: 700,
+                          backgroundColor: r.status === 'sent' ? 'rgba(13, 168, 106, 0.15)' : (isDark ? '#2C2126' : '#ECE2E5'),
+                          color: r.status === 'sent' ? '#0DA86A' : (isDark ? '#B8A2AB' : '#84626D')
+                        }}
+                      >
+                        {r.status === 'sent' ? `Push Enviado (${r.devices_pushed || 0} aparatos)` : r.status}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
     </main>
