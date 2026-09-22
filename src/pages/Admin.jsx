@@ -35,6 +35,58 @@ import {
 } from 'lucide-react';
 import { getDeepSeekApiKey, saveDeepSeekApiKey, testDeepSeekConnection } from '../services/deepseek';
 
+// Modelos prontos em Espanhol com alta taxa de conversão e engajamento para os leads / alunos
+export const SPANISH_NOTIFICATION_TEMPLATES = [
+  {
+    id: 'streak',
+    name: '🔥 Salvar Ofensiva (Racha)',
+    type: 'workout',
+    action: '/#/treinos',
+    title: '¡Tu racha está en peligro! 🔥',
+    message: 'No te vayas a dormir sin tu victoria. ¡Dedica 15 minutos a tu cuerpo antes de medianoche!'
+  },
+  {
+    id: 'morning',
+    name: '🌅 Treino Matinal',
+    type: 'workout',
+    action: '/#/treinos',
+    title: '¡Despierta tu cuerpo y mente! 🌿',
+    message: 'Buenos días. Empieza tu día con energía renovada completando tu sesión de calistenia.'
+  },
+  {
+    id: 'afternoon',
+    name: '⚡ Pausa Ativa da Tarde',
+    type: 'workout',
+    action: '/#/treinos',
+    title: '¿Cansancio de media tarde? ⚡',
+    message: 'Una breve pausa de 15 minutos oxigenará tu mente y quemará calorías. ¡El tatami te espera!'
+  },
+  {
+    id: 'diet',
+    name: '🥗 Dieta & Nutrição Asiática',
+    type: 'diet',
+    action: '/#/dieta',
+    title: 'Consejo del Sensei: Nutrición Asiática 🥗',
+    message: 'Recuerda hidratarte bien hoy y revisar las recetas antiinflamatorias en tu plan de nutrición.'
+  },
+  {
+    id: 'mindset',
+    name: '🥋 Motivação Ninja',
+    type: 'reminder',
+    action: '/#/treinos',
+    title: 'La constancia supera al talento 🥋',
+    message: 'Cada repetición cuenta en tu transformación. Entra a la aplicación y da tu máximo hoy.'
+  },
+  {
+    id: 'congrats',
+    name: '🏆 Parabéns & Conquista',
+    type: 'reminder',
+    action: '/#/treinos',
+    title: '¡Orgullo de tu progreso! 🏆',
+    message: 'Tu dedicación está dando frutos. Sigue firme con tu disciplina y alcanza tu mejor versión.'
+  }
+];
+
 export function Admin({ onNavigate }) {
   const { getAllUsersForAdmin, sendCustomNotification, state, user, theme } = useApp();
   const isDark = theme === 'dark';
@@ -44,7 +96,7 @@ export function Admin({ onNavigate }) {
 
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState({ profiles: [], progress: [], notifications: [] });
-  const [activeTab, setActiveTab] = useState('users'); // 'users' | 'send' | 'history' | 'ai'
+  const [activeTab, setActiveTab] = useState('users'); // 'users' | 'send' | 'history' | 'ai' | 'automation'
   const [searchQuery, setSearchQuery] = useState('');
   const [filterPwa, setFilterPwa] = useState('all'); // 'all' | 'pwa' | 'web'
 
@@ -62,6 +114,7 @@ export function Admin({ onNavigate }) {
   const [notifMessage, setNotifMessage] = useState('');
   const [notifType, setNotifType] = useState('workout');
   const [notifAction, setNotifAction] = useState('/#/treinos');
+  const [selectedTemplateId, setSelectedTemplateId] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [sendSuccessMessage, setSendSuccessMessage] = useState('');
   const [sendErrorMessage, setSendErrorMessage] = useState('');
@@ -81,7 +134,7 @@ export function Admin({ onNavigate }) {
       setAutoTriggerResult(res.data || res.error || { success: true });
       loadAdminData();
     } catch (e) {
-      setAutoTriggerResult({ error: e.message || 'Error al ejecutar motor de notificaciones.' });
+      setAutoTriggerResult({ error: e.message || 'Erro ao executar o motor de notificações automáticas.' });
     } finally {
       setIsTriggeringAuto(false);
     }
@@ -111,13 +164,13 @@ export function Admin({ onNavigate }) {
       setDeepseekStatus({
         tested: true,
         success: true,
-        message: '¡Clave guardada con éxito en la base de datos y sincronizada con el Soporte!'
+        message: 'Chave salva com sucesso no banco de dados e sincronizada com o Suporte!'
       });
     } else {
       setDeepseekStatus({
         tested: true,
         success: false,
-        message: res.error || 'Error al guardar clave.'
+        message: res.error || 'Erro ao salvar chave da API.'
       });
     }
   };
@@ -127,7 +180,7 @@ export function Admin({ onNavigate }) {
       setDeepseekStatus({
         tested: true,
         success: false,
-        message: 'Por favor, escribe o pega una clave antes de probar.'
+        message: 'Por favor, digite ou cole uma chave antes de testar.'
       });
       return;
     }
@@ -138,13 +191,13 @@ export function Admin({ onNavigate }) {
       setDeepseekStatus({
         tested: true,
         success: true,
-        message: '¡Conexión con la API de DeepSeek realizada con éxito! El modelo deepseek-chat está respondiendo perfectamente.'
+        message: 'Conexão com a API DeepSeek realizada com sucesso! O modelo deepseek-chat está respondendo perfeitamente.'
       });
     } else {
       setDeepseekStatus({
         tested: true,
         success: false,
-        message: res.error
+        message: res.error || 'Falha ao conectar com a API DeepSeek.'
       });
     }
   };
@@ -191,10 +244,10 @@ export function Admin({ onNavigate }) {
             <Lock style={{ width: '28px', height: '28px' }} />
           </div>
           <h2 style={{ fontSize: '20px', fontWeight: 700, color: isDark ? '#F7EFF2' : '#301D23', margin: '0 0 8px 0' }}>
-            Acceso Restringido
+            Acesso Restrito
           </h2>
           <p style={{ fontSize: '13px', color: isDark ? '#B8A2AB' : '#84626D', lineHeight: 1.5, margin: '0 0 24px 0' }}>
-            Esta área está restringida exclusivamente al Administrador Master de Calistenia Asiática (<strong>idealconsumo@gmail.com</strong>).
+            Esta área é restrita exclusivamente ao Administrador Master da Calistenia Asiática (<strong>idealconsumo@gmail.com</strong>).
           </p>
           <button
             onClick={() => onNavigate('/')}
@@ -211,7 +264,7 @@ export function Admin({ onNavigate }) {
               boxShadow: '0 4px 14px rgba(211, 69, 91, 0.35)'
             }}
           >
-            Volver al Inicio
+            Voltar ao Início
           </button>
         </div>
       </main>
@@ -257,7 +310,7 @@ export function Admin({ onNavigate }) {
     try {
       if (targetAudience === 'user') {
         if (!selectedUserId) {
-          throw new Error('Por favor, selecciona un usuario destinatario.');
+          throw new Error('Por favor, selecione um aluno destinatário.');
         }
         // Send to specific user
         const dest = data.profiles.find(p => (p.user_id || p.id) === selectedUserId);
@@ -269,9 +322,9 @@ export function Admin({ onNavigate }) {
           user_id: selectedUserId
         });
         if (!res?.success) {
-          throw new Error(res?.error?.message || 'Error al enviar notificación al usuario.');
+          throw new Error(res?.error?.message || 'Erro ao enviar notificação ao aluno.');
         }
-        setSendSuccessMessage(`¡Notificación enviada exclusivamente a ${dest?.name || 'usuario'} (${dest?.email})!`);
+        setSendSuccessMessage(`Notificação enviada exclusivamente para ${dest?.name || 'aluno'} (${dest?.email})!`);
       } else {
         // Broadcast to all (user_id = null)
         const res = await sendCustomNotification({
@@ -282,18 +335,19 @@ export function Admin({ onNavigate }) {
           user_id: null
         });
         if (!res?.success) {
-          throw new Error(res?.error?.message || 'Error al enviar notificación broadcast.');
+          throw new Error(res?.error?.message || 'Erro ao enviar notificação broadcast.');
         }
-        setSendSuccessMessage('¡Notificación enviada con éxito a TODOS los dispositivos y usuarios!');
+        setSendSuccessMessage('Notificação enviada com sucesso para TODOS os dispositivos e alunos!');
       }
       setNotifTitle('');
       setNotifMessage('');
+      setSelectedTemplateId('');
 
       // Refresh admin data
       loadAdminData();
     } catch (err) {
       console.error('Erro ao enviar:', err);
-      setSendErrorMessage(err.message || 'Error al procesar el envío de la notificación.');
+      setSendErrorMessage(err.message || 'Erro ao processar o envio da notificação.');
     } finally {
       setIsSending(false);
     }
@@ -302,7 +356,12 @@ export function Admin({ onNavigate }) {
   const openComposerForUser = (userProfile) => {
     setSelectedUserId(userProfile.user_id || userProfile.id);
     setTargetAudience('user');
-    setNotifTitle(`Olá, ${userProfile.name?.split(' ')[0] || 'Atleta'}!`);
+    const firstName = userProfile.name?.trim().split(' ')[0] || 'Atleta';
+    setNotifTitle(`¡Hola, ${firstName}! 🔥`);
+    setNotifMessage(`¡Tu entrenamiento de hoy te está esperando! Entra y mantén tu racha activa.`);
+    setNotifType('workout');
+    setNotifAction('/#/treinos');
+    setSelectedTemplateId('');
     setActiveTab('send');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -359,7 +418,7 @@ export function Admin({ onNavigate }) {
               cursor: 'pointer',
               boxShadow: '0 2px 6px rgba(0,0,0,0.04)'
             }}
-            aria-label="Volver"
+            aria-label="Voltar"
           >
             <ArrowLeft style={{ width: '18px', height: '18px' }} />
           </button>
@@ -367,7 +426,7 @@ export function Admin({ onNavigate }) {
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               <h1 style={{ fontSize: '22px', fontWeight: 800, margin: 0, letterSpacing: '-0.02em' }}>
-                Panel Administrativo
+                Painel Administrativo
               </h1>
               <span
                 style={{
@@ -418,10 +477,10 @@ export function Admin({ onNavigate }) {
             cursor: 'pointer',
             boxShadow: '0 2px 6px rgba(0,0,0,0.04)'
           }}
-          title="Recargar datos"
+          title="Recarregar dados"
         >
           <RefreshCw style={{ width: '15px', height: '15px' }} className={loading ? 'animate-spin text-[#D3455B]' : ''} />
-          <span>Actualizar</span>
+          <span>Atualizar</span>
         </button>
       </header>
 
@@ -448,7 +507,7 @@ export function Admin({ onNavigate }) {
         >
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
             <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: isDark ? '#B8A2AB' : '#84626D', letterSpacing: '0.05em' }}>
-              Usuarios
+              Alunos
             </span>
             <div style={{ width: '32px', height: '32px', borderRadius: '10px', backgroundColor: 'rgba(211, 69, 91, 0.1)', color: '#D3455B', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <Users style={{ width: '16px', height: '16px' }} />
@@ -458,7 +517,7 @@ export function Admin({ onNavigate }) {
             {totalUsers}
           </div>
           <span style={{ fontSize: '11px', color: isDark ? '#B8A2AB' : '#84626D', marginTop: '4px', display: 'block' }}>
-            Registrados en la plataforma
+            Cadastrados na plataforma
           </span>
         </div>
 
@@ -491,7 +550,7 @@ export function Admin({ onNavigate }) {
             </span>
           </div>
           <span style={{ fontSize: '11px', color: isDark ? '#B8A2AB' : '#84626D', marginTop: '4px', display: 'block' }}>
-            Instalaron en pantalla de inicio
+            Instalados na tela inicial
           </span>
         </div>
 
@@ -509,7 +568,7 @@ export function Admin({ onNavigate }) {
         >
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
             <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: isDark ? '#B8A2AB' : '#84626D', letterSpacing: '0.05em' }}>
-              Entrenamientos
+              Treinos
             </span>
             <div style={{ width: '32px', height: '32px', borderRadius: '10px', backgroundColor: 'rgba(222, 59, 64, 0.1)', color: '#DE3B40', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <Flame style={{ width: '16px', height: '16px' }} />
@@ -519,7 +578,7 @@ export function Admin({ onNavigate }) {
             {totalWorkoutsCompleted}
           </div>
           <span style={{ fontSize: '11px', color: isDark ? '#B8A2AB' : '#84626D', marginTop: '4px', display: 'block' }}>
-            Completados con éxito
+            Concluídos com sucesso
           </span>
         </div>
 
@@ -537,7 +596,7 @@ export function Admin({ onNavigate }) {
         >
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
             <span style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', color: isDark ? '#B8A2AB' : '#84626D', letterSpacing: '0.05em' }}>
-              Notificaciones
+              Notificações
             </span>
             <div style={{ width: '32px', height: '32px', borderRadius: '10px', backgroundColor: 'rgba(2, 132, 199, 0.1)', color: '#0284C7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <Bell style={{ width: '16px', height: '16px' }} />
@@ -547,7 +606,7 @@ export function Admin({ onNavigate }) {
             {totalNotificationsSent}
           </div>
           <span style={{ fontSize: '11px', color: isDark ? '#B8A2AB' : '#84626D', marginTop: '4px', display: 'block' }}>
-            Enviadas en total
+            Enviadas no total
           </span>
         </div>
       </div>
@@ -584,7 +643,7 @@ export function Admin({ onNavigate }) {
           }}
         >
           <Users style={{ width: '16px', height: '16px' }} />
-          <span>Usuarios ({totalUsers})</span>
+          <span>Alunos ({totalUsers})</span>
         </button>
 
         <button
@@ -632,7 +691,7 @@ export function Admin({ onNavigate }) {
           }}
         >
           <Clock style={{ width: '16px', height: '16px' }} />
-          <span>Historial</span>
+          <span>Histórico</span>
         </button>
 
         <button
@@ -716,7 +775,7 @@ export function Admin({ onNavigate }) {
               />
               <input
                 type="text"
-                placeholder="Buscar por nombre, e-mail o teléfono..."
+                placeholder="Buscar por nome, e-mail ou telefone..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 style={{
@@ -825,7 +884,7 @@ export function Admin({ onNavigate }) {
               }}
             >
               <Users style={{ width: '36px', height: '36px', margin: '0 auto 12px auto', opacity: 0.5 }} />
-              <p style={{ fontSize: '14px', fontWeight: 600, margin: 0 }}>Ningún usuario encontrado con los filtros seleccionados.</p>
+              <p style={{ fontSize: '14px', fontWeight: 600, margin: 0 }}>Nenhum aluno encontrado com os filtros selecionados.</p>
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -892,7 +951,7 @@ export function Admin({ onNavigate }) {
                                 whiteSpace: 'nowrap'
                               }}
                             >
-                              {u.name || 'Usuario Sin Nombre'}
+                              {u.name || 'Aluno sem nome'}
                             </span>
                             {isThisAdmin && (
                               <span
@@ -922,7 +981,7 @@ export function Admin({ onNavigate }) {
                               marginTop: '2px'
                             }}
                           >
-                            {u.email || 'Sin email'}
+                            {u.email || 'Sem e-mail'}
                           </span>
                         </div>
                       </div>
@@ -945,7 +1004,7 @@ export function Admin({ onNavigate }) {
                           }}
                         >
                           <Smartphone style={{ width: '13px', height: '13px' }} />
-                          <span>PWA Activo</span>
+                          <span>PWA Ativo</span>
                         </div>
                       ) : (
                         <div
@@ -991,16 +1050,16 @@ export function Admin({ onNavigate }) {
 
                       <div>
                         <span style={{ fontSize: '10.5px', color: isDark ? '#B8A2AB' : '#84626D', display: 'block' }}>
-                          Instalado el
+                          Instalado em
                         </span>
                         <span style={{ fontSize: '12.5px', fontWeight: 600, color: isDark ? '#F7EFF2' : '#301D23', display: 'block', marginTop: '2px' }}>
-                          {u.pwa_installed_at ? new Date(u.pwa_installed_at).toLocaleDateString('es-ES') : 'No instalado'}
+                          {u.pwa_installed_at ? new Date(u.pwa_installed_at).toLocaleDateString('pt-BR') : 'Não instalado'}
                         </span>
                       </div>
 
                       <div>
                         <span style={{ fontSize: '10.5px', color: isDark ? '#B8A2AB' : '#84626D', display: 'block' }}>
-                          Progreso en el Desafío
+                          Progresso no Desafio
                         </span>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
                           <div style={{ flex: 1, height: '6px', borderRadius: '9999px', backgroundColor: isDark ? '#33262C' : '#E9E2E4', overflow: 'hidden' }}>
@@ -1041,7 +1100,7 @@ export function Admin({ onNavigate }) {
                         }}
                       >
                         <Send style={{ width: '13px', height: '13px' }} />
-                        <span>Enviar Mensaje</span>
+                        <span>Enviar Notificação</span>
                       </button>
                     </div>
                   </div>
@@ -1091,10 +1150,10 @@ export function Admin({ onNavigate }) {
               </div>
               <div>
                 <h3 style={{ fontSize: '17px', fontWeight: 700, margin: 0, color: isDark ? '#F7EFF2' : '#301D23' }}>
-                  Disparador de Notificaciones
+                  Disparador de Notificações
                 </h3>
                 <p style={{ fontSize: '12px', color: isDark ? '#B8A2AB' : '#84626D', margin: '2px 0 0 0' }}>
-                  Envía directo al centro de notificaciones y push nativo al dispositivo
+                  Dispare mensagens push na tela de bloqueio e no app dos alunos
                 </p>
               </div>
             </div>
@@ -1142,10 +1201,78 @@ export function Admin({ onNavigate }) {
             )}
 
             <form onSubmit={handleSendNotification} style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+              {/* Quick Templates Picker in Spanish */}
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                  <label style={{ fontSize: '12.5px', fontWeight: 700, color: isDark ? '#F7EFF2' : '#301D23', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <Sparkles style={{ width: '14px', height: '14px', color: '#D3455B' }} />
+                    <span>Modelos Prontos em Espanhol (Clique para Usar):</span>
+                  </label>
+                  {selectedTemplateId && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedTemplateId('');
+                        setNotifTitle('');
+                        setNotifMessage('');
+                      }}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: isDark ? '#B8A2AB' : '#84626D',
+                        fontSize: '11px',
+                        cursor: 'pointer',
+                        textDecoration: 'underline'
+                      }}
+                    >
+                      Limpar modelo
+                    </button>
+                  )}
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '8px' }}>
+                  {SPANISH_NOTIFICATION_TEMPLATES.map((tpl) => {
+                    const isSelected = selectedTemplateId === tpl.id;
+                    return (
+                      <button
+                        key={tpl.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedTemplateId(tpl.id);
+                          setNotifTitle(tpl.title);
+                          setNotifMessage(tpl.message);
+                          setNotifType(tpl.type);
+                          if (tpl.action) setNotifAction(tpl.action);
+                        }}
+                        style={{
+                          padding: '9px 10px',
+                          borderRadius: '12px',
+                          border: isSelected ? '1.5px solid #D3455B' : (isDark ? '1px solid #2D2226' : '1px solid #E9E2E4'),
+                          backgroundColor: isSelected ? (isDark ? 'rgba(211,69,91,0.18)' : '#FFF0F3') : (isDark ? '#1C1518' : '#FAFAFA'),
+                          color: isSelected ? '#D3455B' : (isDark ? '#F7EFF2' : '#4E363E'),
+                          fontSize: '11.5px',
+                          fontWeight: isSelected ? 700 : 600,
+                          textAlign: 'left',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          transition: 'all 0.15s ease'
+                        }}
+                      >
+                        <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {tpl.name}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
               {/* Audience Selector */}
               <div>
                 <label style={{ fontSize: '12.5px', fontWeight: 700, color: isDark ? '#F7EFF2' : '#301D23', display: 'block', marginBottom: '8px' }}>
-                  Público Objetivo:
+                  Público-Alvo:
                 </label>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
                   <button
@@ -1221,10 +1348,10 @@ export function Admin({ onNavigate }) {
                         outline: 'none'
                       }}
                     >
-                      <option value="">Selecciona el atleta destinatario...</option>
+                      <option value="">Selecione o atleta destinatário...</option>
                       {data.profiles.map((p) => (
                         <option key={p.id || p.user_id} value={p.user_id || p.id}>
-                          {p.name || 'Sin nombre'} — {p.email} {p.is_pwa_installed ? '📱' : '🌐'}
+                          {p.name || 'Sem nome'} — {p.email} {p.is_pwa_installed ? '📱' : '🌐'}
                         </option>
                       ))}
                     </select>
@@ -1242,7 +1369,7 @@ export function Admin({ onNavigate }) {
                           lineHeight: 1.4
                         }}
                       >
-                        ⚠️ <strong>Aviso Importante:</strong> Esta notificación se enviará <strong>exclusivamente</strong> a la cuenta seleccionada (<strong>{data.profiles.find(p => (p.user_id || p.id) === selectedUserId)?.email}</strong>). Si estás probando en tu celular y tienes otra cuenta abierta, no le llegará a tu celular. Para que llegue a tu teléfono y a todos los dispositivos, selecciona <strong>"🌍 Todos"</strong>.
+                        ⚠️ <strong>Aviso Importante:</strong> Esta notificação será enviada <strong>exclusivamente</strong> para a conta selecionada (<strong>{data.profiles.find(p => (p.user_id || p.id) === selectedUserId)?.email}</strong>). Se você estiver testando no seu celular com outra conta aberta, ela não chegará nele. Para que chegue no seu celular e em todos os aparelhos, selecione <strong>"🌍 Todos"</strong>.
                       </div>
                     )}
                   </div>
@@ -1252,14 +1379,14 @@ export function Admin({ onNavigate }) {
               {/* Category Picker */}
               <div>
                 <label style={{ fontSize: '12.5px', fontWeight: 700, color: isDark ? '#F7EFF2' : '#301D23', display: 'block', marginBottom: '8px' }}>
-                  Categoría e Ícono:
+                  Categoria & Ícone:
                 </label>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}>
                   {[
-                    { id: 'workout', label: 'Entrenamiento', icon: '🔥' },
+                    { id: 'workout', label: 'Treino', icon: '🔥' },
                     { id: 'diet', label: 'Dieta', icon: '🥗' },
-                    { id: 'reminder', label: 'Recordatorio', icon: '⏰' },
-                    { id: 'info', label: 'General', icon: '📢' }
+                    { id: 'reminder', label: 'Lembrete', icon: '⏰' },
+                    { id: 'info', label: 'Geral', icon: '📢' }
                   ].map((cat) => (
                     <button
                       key={cat.id}
@@ -1291,12 +1418,12 @@ export function Admin({ onNavigate }) {
               {/* Title Input */}
               <div>
                 <label style={{ fontSize: '12.5px', fontWeight: 700, color: isDark ? '#F7EFF2' : '#301D23', display: 'block', marginBottom: '6px' }}>
-                  Título de la Notificación:
+                  Título da Notificação (em Espanhol para os alunos):
                 </label>
                 <input
                   type="text"
                   required
-                  placeholder="Ej: ¡Tu entrenamiento de hoy te está esperando! 🔥"
+                  placeholder="Ex: ¡Tu entrenamiento de hoy te está esperando! 🔥"
                   value={notifTitle}
                   onChange={(e) => setNotifTitle(e.target.value)}
                   style={{
@@ -1318,7 +1445,7 @@ export function Admin({ onNavigate }) {
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
                   <label style={{ fontSize: '12.5px', fontWeight: 700, color: isDark ? '#F7EFF2' : '#301D23' }}>
-                    Mensaje:
+                    Mensagem Push (em Espanhol para os alunos):
                   </label>
                   <span style={{ fontSize: '11px', color: isDark ? '#B8A2AB' : '#84626D' }}>
                     {notifMessage.length}/180 caracteres
@@ -1328,7 +1455,7 @@ export function Admin({ onNavigate }) {
                   required
                   rows={3}
                   maxLength={180}
-                  placeholder="Escribe el mensaje o aviso que aparecerá en la pantalla del dispositivo..."
+                  placeholder="Escreva a mensagem em espanhol que aparecerá na tela do celular do aluno..."
                   value={notifMessage}
                   onChange={(e) => setNotifMessage(e.target.value)}
                   style={{
@@ -1350,7 +1477,7 @@ export function Admin({ onNavigate }) {
               {/* Action Link */}
               <div>
                 <label style={{ fontSize: '12.5px', fontWeight: 700, color: isDark ? '#F7EFF2' : '#301D23', display: 'block', marginBottom: '6px' }}>
-                  Al hacer clic, abrir en la app:
+                  Ao clicar, abrir no app:
                 </label>
                 <select
                   value={notifAction}
@@ -1368,11 +1495,11 @@ export function Admin({ onNavigate }) {
                     boxSizing: 'border-box'
                   }}
                 >
-                  <option value="/#/treinos">Categoría Entrenamientos (/#/treinos)</option>
-                  <option value="/#/dieta">Plan de Dieta (/#/dieta)</option>
-                  <option value="/#/atividade-extra">Actividades Extra (/#/atividade-extra)</option>
-                  <option value="/#/">Página de Inicio (/#/)</option>
-                  <option value="/#/perfil">Perfil del Usuario (/#/perfil)</option>
+                  <option value="/#/treinos">Página de Treinos (/#/treinos)</option>
+                  <option value="/#/dieta">Plano de Dieta (/#/dieta)</option>
+                  <option value="/#/atividade-extra">Atividades Extras (/#/atividade-extra)</option>
+                  <option value="/#/">Página Inicial (/#/)</option>
+                  <option value="/#/perfil">Perfil do Aluno (/#/perfil)</option>
                 </select>
               </div>
 
@@ -1400,7 +1527,7 @@ export function Admin({ onNavigate }) {
                 }}
               >
                 <Send style={{ width: '18px', height: '18px' }} />
-                <span>{isSending ? 'Enviando Mensajes...' : 'Enviar Notificación Ahora'}</span>
+                <span>{isSending ? 'Enviando Mensagens...' : 'Enviar Notificação (em Espanhol) aos Alunos'}</span>
               </button>
             </form>
           </div>
@@ -1419,7 +1546,7 @@ export function Admin({ onNavigate }) {
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '18px' }}>
                 <Eye style={{ width: '16px', height: '16px', color: '#D3455B' }} />
                 <h4 style={{ fontSize: '14px', fontWeight: 700, margin: 0, color: isDark ? '#F7EFF2' : '#301D23' }}>
-                  Vista Previa en Smartphone
+                  Prévia no Smartphone do Aluno (Tela de Bloqueio)
                 </h4>
               </div>
 
@@ -1487,7 +1614,7 @@ export function Admin({ onNavigate }) {
               </div>
 
               <p style={{ fontSize: '11.5px', color: isDark ? '#B8A2AB' : '#84626D', margin: '14px 0 0 0', lineHeight: 1.45, textAlign: 'center' }}>
-                💡 Las notificaciones llegan directamente incluso si el usuario no tiene la página abierta (vía PWA & Service Worker).
+                💡 As notificações chegam diretamente no aparelho do aluno mesmo com o aplicativo fechado (via PWA & Service Worker).
               </p>
             </div>
           </div>
@@ -1509,7 +1636,7 @@ export function Admin({ onNavigate }) {
               }}
             >
               <Clock style={{ width: '36px', height: '36px', margin: '0 auto 12px auto', opacity: 0.5 }} />
-              <p style={{ fontSize: '14px', fontWeight: 600, margin: 0 }}>Ninguna notificación enviada aún.</p>
+              <p style={{ fontSize: '14px', fontWeight: 600, margin: 0 }}>Nenhuma notificação enviada ainda.</p>
             </div>
           ) : (
             data.notifications.map((notif) => (
@@ -1550,7 +1677,7 @@ export function Admin({ onNavigate }) {
                       {notif.title}
                     </h4>
                     <span style={{ fontSize: '11px', color: isDark ? '#B8A2AB' : '#84626D', whiteSpace: 'nowrap' }}>
-                      {new Date(notif.created_at).toLocaleDateString('es-ES', {
+                      {new Date(notif.created_at).toLocaleDateString('pt-BR', {
                         day: '2-digit',
                         month: '2-digit',
                         hour: '2-digit',
@@ -1574,7 +1701,7 @@ export function Admin({ onNavigate }) {
                         color: isDark ? '#F7EFF2' : '#72555F'
                       }}
                     >
-                      {notif.user_id ? '👤 Atleta Específico' : '🌍 Todos los Atletas'}
+                      {notif.user_id ? '👤 Aluno Específico' : '🌍 Todos os Alunos'}
                     </span>
                     <span style={{ fontSize: '11px', color: isDark ? '#B8A2AB' : '#84626D' }}>
                       Enviado por: <strong>{notif.sent_by || 'idealconsumo@gmail.com'}</strong>
@@ -1619,10 +1746,10 @@ export function Admin({ onNavigate }) {
                   </div>
                   <div>
                     <h3 style={{ fontSize: '18px', fontWeight: 800, margin: 0, color: isDark ? '#F7EFF2' : '#301D23' }}>
-                      Inteligencia Artificial DeepSeek
+                      Inteligência Artificial DeepSeek
                     </h3>
                     <p style={{ fontSize: '12.5px', color: isDark ? '#B8A2AB' : '#84626D', margin: '2px 0 0 0' }}>
-                      Modelo oficial para soporte dinámico, dudas y nutrición en tiempo real
+                      Modelo oficial para suporte dinâmico, dúvidas e nutrição em tempo real
                     </p>
                   </div>
                 </div>
@@ -1651,7 +1778,7 @@ export function Admin({ onNavigate }) {
                     display: 'inline-block'
                   }}
                 />
-                {deepseekKeyInput.trim() ? 'DeepSeek Configurada' : 'Clave Pendiente'}
+                {deepseekKeyInput.trim() ? 'DeepSeek Configurada' : 'Chave Pendente'}
               </div>
             </div>
 
@@ -1697,7 +1824,7 @@ export function Admin({ onNavigate }) {
                     color: isDark ? '#F7EFF2' : '#301D23'
                   }}
                 >
-                  Clave de API DeepSeek (API Key)
+                  Chave de API DeepSeek (API Key)
                 </label>
                 <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
                   <Key
@@ -1750,7 +1877,7 @@ export function Admin({ onNavigate }) {
                   </button>
                 </div>
                 <span style={{ fontSize: '11.5px', color: isDark ? '#B8A2AB' : '#84626D', marginTop: '6px', display: 'block' }}>
-                  Tu clave se almacena de forma segura en la tabla <code>app_settings</code> de Supabase y encriptada en tránsito.
+                  Sua chave é armazenada com segurança na tabela <code>app_settings</code> do Supabase e criptografada em trânsito.
                 </span>
               </div>
 
@@ -1777,7 +1904,7 @@ export function Admin({ onNavigate }) {
                   }}
                 >
                   <RefreshCw style={{ width: '16px', height: '16px' }} className={isTestingKey ? 'animate-spin text-[#D3455B]' : ''} />
-                  <span>{isTestingKey ? 'Probando Conexión...' : 'Probar Conexión'}</span>
+                  <span>{isTestingKey ? 'Testando Conexão...' : 'Testar Conexão'}</span>
                 </button>
 
                 <button
@@ -1801,7 +1928,7 @@ export function Admin({ onNavigate }) {
                   }}
                 >
                   <Check style={{ width: '16px', height: '16px' }} />
-                  <span>{isSavingKey ? 'Guardando...' : 'Guardar Clave'}</span>
+                  <span>{isSavingKey ? 'Salvando...' : 'Salvar Chave'}</span>
                 </button>
               </div>
             </div>
@@ -1818,18 +1945,18 @@ export function Admin({ onNavigate }) {
           >
             <h4 style={{ fontSize: '14px', fontWeight: 800, margin: '0 0 10px 0', color: '#D3455B', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <ExternalLink style={{ width: '16px', height: '16px' }} />
-              Cómo obtener tu clave de API DeepSeek:
+              Como obter sua chave de API DeepSeek:
             </h4>
             <ol style={{ margin: 0, paddingLeft: '20px', fontSize: '13px', color: isDark ? '#B8A2AB' : '#5C4850', lineHeight: 1.7 }}>
               <li>
-                Accede al portal oficial: <a href="https://platform.deepseek.com/" target="_blank" rel="noopener noreferrer" style={{ color: '#D3455B', fontWeight: 700, textDecoration: 'underline' }}>platform.deepseek.com</a>
+                Acesse o portal oficial: <a href="https://platform.deepseek.com/" target="_blank" rel="noopener noreferrer" style={{ color: '#D3455B', fontWeight: 700, textDecoration: 'underline' }}>platform.deepseek.com</a>
               </li>
-              <li>Inicia sesión o crea tu cuenta en DeepSeek.</li>
-              <li>Ve al menú <strong>API Keys</strong> y haz clic en <strong>Create new API Key</strong>.</li>
-              <li>Copia la clave generada (empieza con <code>sk-</code>), pégala en el campo de arriba y haz clic en <strong>Guardar Clave</strong>.</li>
+              <li>Faça login ou crie sua conta na DeepSeek.</li>
+              <li>Acesse o menu <strong>API Keys</strong> e clique em <strong>Create new API Key</strong>.</li>
+              <li>Copie a chave gerada (começa com <code>sk-</code>), cole no campo acima e clique em <strong>Salvar Chave</strong>.</li>
             </ol>
             <p style={{ fontSize: '12px', color: isDark ? '#84626D' : '#84626D', margin: '12px 0 0 0', fontStyle: 'italic' }}>
-              💡 Una vez guardada, el modelo <strong>deepseek-chat</strong> responderá a todas las preguntas de las atletas instantáneamente en Soporte 24h, exactamente como en la aplicación original.
+              💡 Depois de salva, o modelo <strong>deepseek-chat</strong> responderá a todas as dúvidas das alunas instantaneamente no Suporte 24h, exatamente como no aplicativo original.
             </p>
           </div>
         </div>
@@ -1866,10 +1993,10 @@ export function Admin({ onNavigate }) {
                 </div>
                 <div>
                   <h3 style={{ fontSize: '18px', fontWeight: 800, margin: 0, color: isDark ? '#F7EFF2' : '#301D23' }}>
-                    Motor de Notificaciones Automáticas (Estilo Duolingo)
+                    Motor de Notificações Automáticas (Estilo Duolingo)
                   </h3>
                   <p style={{ fontSize: '12.5px', color: isDark ? '#B8A2AB' : '#84626D', margin: '2px 0 0 0' }}>
-                    Gatillos comportamentales en la nube para mantener encendida la racha del Desafío 21 Días.
+                    Gatilhos comportamentais na nuvem para manter o engajamento e a ofensiva do Desafio 21 Dias.
                   </p>
                 </div>
               </div>
@@ -1890,30 +2017,30 @@ export function Admin({ onNavigate }) {
                 }}
               >
                 <div style={{ width: '8px', height: '8px', borderRadius: '9999px', backgroundColor: '#0DA86A' }} />
-                <span>3 Cron Jobs Activos en Supabase Cloud</span>
+                <span>3 Rotinas Automáticas (Cron Jobs) Ativas no Supabase Cloud</span>
               </div>
             </div>
 
             {/* Smart Rules Badges */}
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '14px' }}>
               <div style={{ padding: '6px 12px', borderRadius: '12px', backgroundColor: isDark ? '#221A1E' : '#F6EFF1', fontSize: '11.5px', color: isDark ? '#F7EFF2' : '#4E363E', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span>🛡️</span> <strong>Filtro Anti-Molestia:</strong> Omite a quien ya entrenó hoy
+                <span>🛡️</span> <strong>Filtro Anti-Incômodo:</strong> Pula quem já treinou hoje
               </div>
               <div style={{ padding: '6px 12px', borderRadius: '12px', backgroundColor: isDark ? '#221A1E' : '#F6EFF1', fontSize: '11.5px', color: isDark ? '#F7EFF2' : '#4E363E', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span>🎯</span> <strong>Día Dinámico:</strong> Calcula el Día (1-21) exacto del alumno
+                <span>🎯</span> <strong>Dia Dinâmico:</strong> Calcula o Dia (1-21) exato de cada aluno
               </div>
               <div style={{ padding: '6px 12px', borderRadius: '12px', backgroundColor: isDark ? '#221A1E' : '#F6EFF1', fontSize: '11.5px', color: isDark ? '#F7EFF2' : '#4E363E', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span>🛑</span> <strong>Anti-Spam:</strong> Máximo 1 aviso cada 4 horas
+                <span>🛑</span> <strong>Anti-Spam:</strong> Máximo 1 notificação a cada 4 horas
               </div>
               <div style={{ padding: '6px 12px', borderRadius: '12px', backgroundColor: isDark ? '#221A1E' : '#F6EFF1', fontSize: '11.5px', color: isDark ? '#F7EFF2' : '#4E363E', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span>🥋</span> <strong>Rescate:</strong> Alerta de reenganche si lleva +24h ausente
+                <span>🥋</span> <strong>Resgate:</strong> Alerta de reengajamento para ausentes há +24h
               </div>
             </div>
           </div>
 
           {/* Schedule Cards Grid */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
-            {/* Card 1: Mañana */}
+            {/* Card 1: Manhã */}
             <div
               style={{
                 backgroundColor: isDark ? '#181215' : '#FFFFFF',
@@ -1929,14 +2056,14 @@ export function Admin({ onNavigate }) {
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
                   <span style={{ fontSize: '24px' }}>🌅</span>
                   <span style={{ padding: '4px 10px', borderRadius: '9999px', backgroundColor: isDark ? '#251D21' : '#F5ECEE', fontSize: '11px', fontWeight: 700, color: '#D3455B' }}>
-                    08:30 (Mañana)
+                    08:30 (Manhã)
                   </span>
                 </div>
                 <h4 style={{ fontSize: '15px', fontWeight: 700, margin: '0 0 6px 0', color: isDark ? '#F7EFF2' : '#301D23' }}>
                   Despertar & Postura
                 </h4>
                 <p style={{ fontSize: '12px', color: isDark ? '#B8A2AB' : '#84626D', lineHeight: 1.5, margin: 0 }}>
-                  Activa el metabolismo matutino e invita al alumno a iniciar el día con 15 min de calistenia.
+                  Ativa o metabolismo matinal e convida o aluno a iniciar o dia com 15 min de calistenia.
                 </p>
                 <div style={{ marginTop: '14px', padding: '10px 12px', borderRadius: '12px', backgroundColor: isDark ? '#20181C' : '#FAFAFA', border: isDark ? '1px solid #2A1F24' : '1px solid #F0E6E9', fontSize: '11.5px', color: isDark ? '#D9C5CD' : '#5C4850', fontStyle: 'italic' }}>
                   "¡Despierta tu cuerpo! 🌿 15 minutos de calistenia hoy activarán tu metabolismo todo el día."
@@ -1964,7 +2091,7 @@ export function Admin({ onNavigate }) {
                 }}
               >
                 <Zap style={{ width: '14px', height: '14px' }} />
-                <span>{isTriggeringAuto ? 'Disparando...' : 'Probar Gatillo de Mañana'}</span>
+                <span>{isTriggeringAuto ? 'Disparando...' : 'Testar Disparo da Manhã'}</span>
               </button>
             </div>
 
@@ -1988,13 +2115,13 @@ export function Admin({ onNavigate }) {
                   </span>
                 </div>
                 <h4 style={{ fontSize: '15px', fontWeight: 700, margin: '0 0 6px 0', color: isDark ? '#F7EFF2' : '#301D23' }}>
-                  Recarga de Media Tarde
+                  Recarga da Tarde
                 </h4>
                 <p style={{ fontSize: '12px', color: isDark ? '#B8A2AB' : '#84626D', lineHeight: 1.5, margin: 0 }}>
-                  Rescata al alumno del bajón post-almuerzo y le recuerda que su sesión sigue esperándolo.
+                  Resgata o aluno do cansaço pós-almoço e lembra que a aula continua disponível.
                 </p>
                 <div style={{ marginTop: '14px', padding: '10px 12px', borderRadius: '12px', backgroundColor: isDark ? '#20181C' : '#FAFAFA', border: isDark ? '1px solid #2A1F24' : '1px solid #F0E6E9', fontSize: '11.5px', color: isDark ? '#D9C5CD' : '#5C4850', fontStyle: 'italic' }}>
-                  "¿Cansancio de media tarde? ⚡ Una sesión breve de calistenia oxigenará tu mente y cuerpo."
+                  "¿Cansancio de media tarde? ⚡ Una sesión breve de calistenia oxigenará tu mente y renovará tu energía."
                 </div>
               </div>
               <button
@@ -2019,11 +2146,11 @@ export function Admin({ onNavigate }) {
                 }}
               >
                 <Zap style={{ width: '14px', height: '14px' }} />
-                <span>{isTriggeringAuto ? 'Disparando...' : 'Probar Gatillo de Tarde'}</span>
+                <span>{isTriggeringAuto ? 'Disparando...' : 'Testar Disparo da Tarde'}</span>
               </button>
             </div>
 
-            {/* Card 3: Salva tu Racha (Duolingo Style) */}
+            {/* Card 3: Salvar Ofensiva (Duolingo Style) */}
             <div
               style={{
                 backgroundColor: isDark ? '#1E1418' : '#FFF5F6',
@@ -2040,14 +2167,14 @@ export function Admin({ onNavigate }) {
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
                   <span style={{ fontSize: '24px' }}>🔥</span>
                   <span style={{ padding: '4px 10px', borderRadius: '9999px', backgroundColor: '#FF5722', fontSize: '11px', fontWeight: 800, color: '#FFFFFF' }}>
-                    20:00 (Salva tu Racha)
+                    20:00 (Salvar Ofensiva)
                   </span>
                 </div>
                 <h4 style={{ fontSize: '15px', fontWeight: 800, margin: '0 0 6px 0', color: isDark ? '#F7EFF2' : '#301D23' }}>
-                  Aversión a la Pérdida (Duolingo)
+                  Gatilho de Urgência & Ofensiva (Estilo Duolingo)
                 </h4>
                 <p style={{ fontSize: '12px', color: isDark ? '#B8A2AB' : '#84626D', lineHeight: 1.5, margin: 0 }}>
-                  Alerta con urgencia a los alumnos que aún no han entrenado hoy para no perder el día del Desafío.
+                  Alerta com urgência os alunos que ainda não treinaram hoje para não perderem a sequência do Desafio.
                 </p>
                 <div style={{ marginTop: '14px', padding: '10px 12px', borderRadius: '12px', backgroundColor: isDark ? '#170E12' : '#FFFFFF', border: isDark ? '1px solid #3D2228' : '1px solid #FCDADF', fontSize: '11.5px', color: '#D3455B', fontWeight: 600 }}>
                   {'"¡Tu racha está en peligro! 🔥 No te vayas a dormir sin tu victoria, [Nombre]. Completa el Día [X] antes de medianoche."'}
@@ -2076,7 +2203,7 @@ export function Admin({ onNavigate }) {
                 }}
               >
                 <Flame style={{ width: '14px', height: '14px' }} />
-                <span>{isTriggeringAuto ? 'Disparando...' : 'Probar Salva tu Racha Ahora'}</span>
+                <span>{isTriggeringAuto ? 'Disparando...' : 'Disparar Salvar Ofensiva Agora'}</span>
               </button>
             </div>
           </div>
@@ -2094,32 +2221,32 @@ export function Admin({ onNavigate }) {
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
                 <h4 style={{ fontSize: '15px', fontWeight: 700, margin: 0, color: isDark ? '#F7EFF2' : '#301D23', display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <CheckCircle style={{ width: '18px', height: '18px', color: '#0DA86A' }} />
-                  Resultado de la Ejecución del Motor Automático:
+                  Resultado da Execução do Motor Automático:
                 </h4>
                 <button
                   onClick={() => setAutoTriggerResult(null)}
                   style={{ background: 'none', border: 'none', color: isDark ? '#B8A2AB' : '#84626D', cursor: 'pointer', fontSize: '12px' }}
                 >
-                  Cerrar
+                  Fechar
                 </button>
               </div>
 
               {/* Metrics row */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '10px', marginBottom: '16px' }}>
                 <div style={{ padding: '12px', borderRadius: '14px', backgroundColor: isDark ? '#221A1E' : '#F7F2F4' }}>
-                  <span style={{ fontSize: '11px', color: isDark ? '#B8A2AB' : '#84626D', display: 'block' }}>Alumnos Evaluados</span>
+                  <span style={{ fontSize: '11px', color: isDark ? '#B8A2AB' : '#84626D', display: 'block' }}>Alunos Avaliados</span>
                   <span style={{ fontSize: '18px', fontWeight: 800, color: isDark ? '#F7EFF2' : '#301D23' }}>{autoTriggerResult.processed || 0}</span>
                 </div>
                 <div style={{ padding: '12px', borderRadius: '14px', backgroundColor: isDark ? 'rgba(13, 168, 106, 0.15)' : '#EDF7F0' }}>
-                  <span style={{ fontSize: '11px', color: '#0DA86A', display: 'block' }}>Notificaciones Enviadas</span>
+                  <span style={{ fontSize: '11px', color: '#0DA86A', display: 'block' }}>Notificações Enviadas</span>
                   <span style={{ fontSize: '18px', fontWeight: 800, color: '#0DA86A' }}>{autoTriggerResult.sent || 0}</span>
                 </div>
                 <div style={{ padding: '12px', borderRadius: '14px', backgroundColor: isDark ? '#221A1E' : '#F7F2F4' }}>
-                  <span style={{ fontSize: '11px', color: isDark ? '#B8A2AB' : '#84626D', display: 'block' }}>Ya Habían Entrenado Hoy</span>
+                  <span style={{ fontSize: '11px', color: isDark ? '#B8A2AB' : '#84626D', display: 'block' }}>Já Haviam Treinado Hoje</span>
                   <span style={{ fontSize: '18px', fontWeight: 800, color: isDark ? '#F7EFF2' : '#301D23' }}>{autoTriggerResult.skipped_already_trained || 0}</span>
                 </div>
                 <div style={{ padding: '12px', borderRadius: '14px', backgroundColor: isDark ? '#221A1E' : '#F7F2F4' }}>
-                  <span style={{ fontSize: '11px', color: isDark ? '#B8A2AB' : '#84626D', display: 'block' }}>Omitidos por Anti-Spam (4h)</span>
+                  <span style={{ fontSize: '11px', color: isDark ? '#B8A2AB' : '#84626D', display: 'block' }}>Ignorados por Anti-Spam (4h)</span>
                   <span style={{ fontSize: '18px', fontWeight: 800, color: isDark ? '#F7EFF2' : '#301D23' }}>{autoTriggerResult.skipped_recent || 0}</span>
                 </div>
               </div>
@@ -2155,7 +2282,7 @@ export function Admin({ onNavigate }) {
                           color: r.status === 'sent' ? '#0DA86A' : (isDark ? '#B8A2AB' : '#84626D')
                         }}
                       >
-                        {r.status === 'sent' ? `Push Enviado (${r.devices_pushed || 0} aparatos)` : r.status}
+                        {r.status === 'sent' ? `Push Enviado (${r.devices_pushed || 0} dispositivos)` : r.status}
                       </span>
                     </div>
                   ))}
