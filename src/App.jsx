@@ -70,30 +70,34 @@ export function App() {
     };
   }, []);
 
-  // Show entrance popup:
-  // 1. On Web: Prompt to install the app (Android or iOS)
-  // 2. In Installed App (standalone): Prompt to activate notifications
+  // Control entrance popups based on exact installation and notification state:
+  // 1. If NOT installed on device: keep prompting to install upon entrance
+  // 2. If INSTALLED: keep prompting to activate notifications until actually granted!
+  const [hasDismissedThisSession, setHasDismissedThisSession] = useState(false);
+
   useEffect(() => {
     if (!loading) {
       const hasProfile = !!state.userProfile?.name || !!user;
       if (!hasProfile) return;
 
-      const isAppInstalled = Boolean(pwa?.isInstalled);
+      const isAppInstalled = Boolean(
+        pwa?.isInstalled ||
+        state.userProfile?.is_pwa_installed ||
+        (typeof window !== 'undefined' && localStorage.getItem('calistenia_pwa_installed') === 'true')
+      );
       const notifsActive = typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted';
 
       if (!isAppInstalled) {
-        // On Web: prompt to install
-        const installSeen = typeof window !== 'undefined' ? sessionStorage.getItem('calistenia_web_install_prompt_seen') : null;
-        if (!installSeen) {
+        // 1. Not installed: prompt to install on entrance!
+        if (!hasDismissedThisSession) {
           const timer = setTimeout(() => {
             setShowEntranceModal(true);
           }, 600);
           return () => clearTimeout(timer);
         }
       } else {
-        // In Installed App: prompt to activate notifications
-        const notifSeen = typeof window !== 'undefined' ? sessionStorage.getItem('calistenia_app_notif_prompt_seen') : null;
-        if (!notifSeen && !notifsActive) {
+        // 2. Installed: prompt to activate notifications until granted!
+        if (!notifsActive && !hasDismissedThisSession) {
           const timer = setTimeout(() => {
             setShowEntranceModal(true);
           }, 600);
@@ -101,17 +105,19 @@ export function App() {
         }
       }
     }
-  }, [loading, user?.id, state.userProfile?.name, state.userProfile?.onboardingCompleted, currentPath, pwa?.isInstalled]);
+  }, [
+    loading,
+    user?.id,
+    state.userProfile?.name,
+    state.userProfile?.onboardingCompleted,
+    state.userProfile?.is_pwa_installed,
+    pwa?.isInstalled,
+    hasDismissedThisSession
+  ]);
 
   const handleCloseEntranceModal = () => {
     setShowEntranceModal(false);
-    if (typeof window !== 'undefined') {
-      if (!pwa?.isInstalled) {
-        sessionStorage.setItem('calistenia_web_install_prompt_seen', 'true');
-      } else {
-        sessionStorage.setItem('calistenia_app_notif_prompt_seen', 'true');
-      }
-    }
+    setHasDismissedThisSession(true);
   };
 
   if (loading) {

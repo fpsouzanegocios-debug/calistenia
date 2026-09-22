@@ -400,17 +400,22 @@ export function AppEntranceModal({ isOpen, onClose, pwa }) {
               </div>
             )}
 
-            {/* Buttons */}
+            {/* Action Buttons */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               <button
-                onClick={onClose}
+                onClick={() => {
+                  if (pwa?.recordInstallation) {
+                    pwa.recordInstallation();
+                  }
+                  onClose();
+                }}
                 style={{
                   width: '100%',
-                  height: '48px',
+                  height: '50px',
                   borderRadius: '16px',
                   backgroundColor: '#D3455B',
                   color: '#FFFFFF',
-                  fontSize: '14px',
+                  fontSize: '14.5px',
                   fontWeight: 700,
                   border: 'none',
                   cursor: 'pointer',
@@ -418,11 +423,26 @@ export function AppEntranceModal({ isOpen, onClose, pwa }) {
                   alignItems: 'center',
                   justifyContent: 'center',
                   gap: '8px',
-                  boxShadow: '0 4px 14px rgba(211, 69, 91, 0.4)',
+                  boxShadow: '0 6px 18px rgba(211, 69, 91, 0.4)',
                   transition: 'all 0.2s'
                 }}
               >
-                <span>Entendido, continuar</span>
+                <Check style={{ width: '18px', height: '18px', strokeWidth: 3 }} />
+                <span>¡Ya agregué la App a mi pantalla!</span>
+              </button>
+
+              <button
+                onClick={onClose}
+                style={{
+                  height: '38px',
+                  background: 'none',
+                  border: 'none',
+                  color: isDark ? '#8A737C' : '#99828B',
+                  fontSize: '12.5px',
+                  cursor: 'pointer'
+                }}
+              >
+                Continuar en el navegador por ahora
               </button>
             </div>
           </div>
