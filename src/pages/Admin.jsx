@@ -2050,7 +2050,7 @@ export function Admin({ onNavigate }) {
                   Alerta con urgencia a los alumnos que aún no han entrenado hoy para no perder el día del Desafío.
                 </p>
                 <div style={{ marginTop: '14px', padding: '10px 12px', borderRadius: '12px', backgroundColor: isDark ? '#170E12' : '#FFFFFF', border: isDark ? '1px solid #3D2228' : '1px solid #FCDADF', fontSize: '11.5px', color: '#D3455B', fontWeight: 600 }}>
-                  "¡Tu racha está en peligro! 🔥 No te vayas a dormir sin tu victoria, {nombre}. Completa el Día {X} antes de medianoche."
+                  {'"¡Tu racha está en peligro! 🔥 No te vayas a dormir sin tu victoria, [Nombre]. Completa el Día [X] antes de medianoche."'}
                 </div>
               </div>
               <button
