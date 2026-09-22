@@ -15,6 +15,7 @@ import {
   RefreshCw,
   Filter,
   ChevronRight,
+  ChevronLeft,
   Shield,
   Sparkles,
   ExternalLink,
@@ -99,6 +100,8 @@ export function Admin({ onNavigate }) {
   const [activeTab, setActiveTab] = useState('users'); // 'users' | 'send' | 'history' | 'ai' | 'automation'
   const [searchQuery, setSearchQuery] = useState('');
   const [filterPwa, setFilterPwa] = useState('all'); // 'all' | 'pwa' | 'web'
+  const [currentPage, setCurrentPage] = useState(1);
+  const [usersPerPage, setUsersPerPage] = useState(10);
 
   // DeepSeek AI State
   const [deepseekKeyInput, setDeepseekKeyInput] = useState('');
@@ -306,6 +309,12 @@ export function Admin({ onNavigate }) {
     if (filterPwa === 'web') return !u.is_pwa_installed;
     return true;
   });
+
+  // Pagination calculation
+  const totalPages = Math.max(1, Math.ceil(filteredUsers.length / usersPerPage));
+  const safeCurrentPage = Math.min(Math.max(1, currentPage), totalPages);
+  const startIndex = (safeCurrentPage - 1) * usersPerPage;
+  const paginatedUsers = filteredUsers.slice(startIndex, startIndex + usersPerPage);
 
   const handleSendNotification = async (e) => {
     e.preventDefault();
@@ -785,7 +794,10 @@ export function Admin({ onNavigate }) {
                 type="text"
                 placeholder="Buscar por nome, e-mail ou telefone..."
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setCurrentPage(1);
+                }}
                 style={{
                   width: '100%',
                   height: '44px',
@@ -802,7 +814,10 @@ export function Admin({ onNavigate }) {
               />
               {searchQuery && (
                 <button
-                  onClick={() => setSearchQuery('')}
+                  onClick={() => {
+                    setSearchQuery('');
+                    setCurrentPage(1);
+                  }}
                   style={{
                     position: 'absolute',
                     right: '12px',
@@ -829,7 +844,10 @@ export function Admin({ onNavigate }) {
               }}
             >
               <button
-                onClick={() => setFilterPwa('all')}
+                onClick={() => {
+                  setFilterPwa('all');
+                  setCurrentPage(1);
+                }}
                 style={{
                   padding: '6px 12px',
                   borderRadius: '10px',
@@ -845,7 +863,10 @@ export function Admin({ onNavigate }) {
                 Todos ({totalUsers})
               </button>
               <button
-                onClick={() => setFilterPwa('pwa')}
+                onClick={() => {
+                  setFilterPwa('pwa');
+                  setCurrentPage(1);
+                }}
                 style={{
                   padding: '6px 12px',
                   borderRadius: '10px',
@@ -861,7 +882,10 @@ export function Admin({ onNavigate }) {
                 📱 PWA ({pwaUsersCount})
               </button>
               <button
-                onClick={() => setFilterPwa('web')}
+                onClick={() => {
+                  setFilterPwa('web');
+                  setCurrentPage(1);
+                }}
                 style={{
                   padding: '6px 12px',
                   borderRadius: '10px',
@@ -895,8 +919,8 @@ export function Admin({ onNavigate }) {
               <p style={{ fontSize: '14px', fontWeight: 600, margin: 0 }}>Nenhum aluno encontrado com os filtros selecionados.</p>
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {filteredUsers.map((u) => {
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {paginatedUsers.map((u) => {
                 const isPwa = Boolean(u.is_pwa_installed);
                 const workoutsDone = userProgressMap[u.user_id] || 0;
                 const workoutPercent = Math.round((workoutsDone / 21) * 100);
@@ -907,213 +931,371 @@ export function Admin({ onNavigate }) {
                     key={u.id || u.user_id}
                     style={{
                       backgroundColor: isDark ? '#181215' : '#FFFFFF',
-                      borderRadius: '22px',
-                      padding: '18px 20px',
+                      borderRadius: '16px',
+                      padding: '10px 16px',
                       border: isThisAdmin
                         ? '1.5px solid #D3455B'
                         : isDark
-                        ? '1px solid #281E23'
+                        ? '1px solid #251B20'
                         : '1px solid #EDE4E7',
-                      boxShadow: isDark ? '0 4px 14px rgba(0,0,0,0.25)' : '0 2px 8px rgba(61,41,48,0.04)',
+                      boxShadow: isDark ? '0 2px 8px rgba(0,0,0,0.2)' : '0 2px 6px rgba(61,41,48,0.03)',
                       display: 'flex',
-                      flexDirection: 'column',
-                      gap: '14px'
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: '12px',
+                      flexWrap: 'wrap',
+                      transition: 'all 0.15s ease'
                     }}
                   >
-                    {/* Top Row: User Avatar, Name, Email, Badges */}
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '14px', minWidth: 0 }}>
-                        <div
-                          style={{
-                            width: '46px',
-                            height: '46px',
-                            minWidth: '46px',
-                            borderRadius: '9999px',
-                            backgroundColor: isThisAdmin ? '#D3455B' : '#72555F',
-                            color: '#FFFFFF',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            fontSize: '16px',
-                            fontWeight: 700,
-                            overflow: 'hidden',
-                            boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-                          }}
-                        >
-                          {u.photo_url ? (
-                            <img src={u.photo_url} alt={u.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                          ) : (
-                            (u.name || 'U').charAt(0).toUpperCase()
+                    {/* Left: User Avatar + Name + Subtitle */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: '200px', flex: '1 1 220px' }}>
+                      <div
+                        style={{
+                          width: '38px',
+                          height: '38px',
+                          minWidth: '38px',
+                          borderRadius: '9999px',
+                          backgroundColor: isThisAdmin ? '#D3455B' : '#72555F',
+                          color: '#FFFFFF',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '14px',
+                          fontWeight: 700,
+                          overflow: 'hidden',
+                          boxShadow: '0 2px 6px rgba(0,0,0,0.08)'
+                        }}
+                      >
+                        {u.photo_url ? (
+                          <img src={u.photo_url} alt={u.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        ) : (
+                          (u.name || 'U').charAt(0).toUpperCase()
+                        )}
+                      </div>
+
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span
+                            style={{
+                              fontSize: '13.5px',
+                              fontWeight: 700,
+                              color: isDark ? '#F7EFF2' : '#301D23',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap'
+                            }}
+                          >
+                            {u.name || 'Aluno sem nome'}
+                          </span>
+                          {isThisAdmin && (
+                            <span
+                              style={{
+                                fontSize: '9px',
+                                fontWeight: 800,
+                                backgroundColor: 'rgba(211, 69, 91, 0.14)',
+                                color: '#D3455B',
+                                padding: '1px 6px',
+                                borderRadius: '6px',
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.04em'
+                              }}
+                            >
+                              Admin
+                            </span>
                           )}
                         </div>
 
-                        <div style={{ minWidth: 0 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                            <span
-                              style={{
-                                fontSize: '15px',
-                                fontWeight: 700,
-                                color: isDark ? '#F7EFF2' : '#301D23',
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                whiteSpace: 'nowrap'
-                              }}
-                            >
-                              {u.name || 'Aluno sem nome'}
-                            </span>
-                            {isThisAdmin && (
-                              <span
-                                style={{
-                                  fontSize: '10px',
-                                  fontWeight: 800,
-                                  backgroundColor: 'rgba(211, 69, 91, 0.14)',
-                                  color: '#D3455B',
-                                  padding: '2px 8px',
-                                  borderRadius: '9999px',
-                                  textTransform: 'uppercase',
-                                  letterSpacing: '0.04em'
-                                }}
-                              >
-                                Master Admin
-                              </span>
-                            )}
-                          </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '2px', flexWrap: 'wrap' }}>
                           <span
                             style={{
-                              fontSize: '12.5px',
+                              fontSize: '12px',
                               color: isDark ? '#B8A2AB' : '#84626D',
-                              display: 'block',
                               overflow: 'hidden',
                               textOverflow: 'ellipsis',
                               whiteSpace: 'nowrap',
-                              marginTop: '2px'
+                              maxWidth: '190px'
                             }}
+                            title={u.email}
                           >
                             {u.email || 'Sem e-mail'}
                           </span>
+                          {u.pwa_device_info && (
+                            <span style={{ fontSize: '11px', color: isDark ? '#7D6A73' : '#A38B94' }}>
+                              • {u.pwa_device_info}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Right: Challenge Progress + Device Pill + Notification Action */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', justifyContent: 'flex-end', flex: '1 1 auto' }}>
+                      {/* Challenge Progress */}
+                      <div style={{ display: 'flex', flexDirection: 'column', minWidth: '85px', gap: '3px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ fontSize: '10px', color: isDark ? '#B8A2AB' : '#84626D', fontWeight: 600 }}>Desafio</span>
+                          <span style={{ fontSize: '11px', fontWeight: 700, color: '#D3455B' }}>{workoutsDone}/21d</span>
+                        </div>
+                        <div style={{ width: '85px', height: '5px', borderRadius: '9999px', backgroundColor: isDark ? '#33262C' : '#E9E2E4', overflow: 'hidden' }}>
+                          <div
+                            style={{
+                              width: `${Math.min(100, workoutPercent)}%`,
+                              height: '100%',
+                              backgroundColor: '#D3455B',
+                              borderRadius: '9999px'
+                            }}
+                          />
                         </div>
                       </div>
 
-                      {/* Device / PWA Badge */}
+                      {/* Device Pill */}
                       {isPwa ? (
-                        <div
+                        <span
                           style={{
                             display: 'inline-flex',
                             alignItems: 'center',
-                            gap: '6px',
-                            padding: '6px 12px',
+                            gap: '5px',
+                            padding: '4px 9px',
                             borderRadius: '9999px',
                             backgroundColor: isDark ? 'rgba(13, 168, 106, 0.15)' : '#E6F7EF',
                             border: isDark ? '1px solid rgba(13, 168, 106, 0.3)' : '1px solid #BEE7D3',
                             color: '#0DA86A',
                             fontSize: '11px',
                             fontWeight: 700,
-                            flexShrink: 0
+                            whiteSpace: 'nowrap'
                           }}
                         >
-                          <Smartphone style={{ width: '13px', height: '13px' }} />
+                          <Smartphone style={{ width: '12px', height: '12px' }} />
                           <span>PWA Ativo</span>
-                        </div>
+                        </span>
                       ) : (
-                        <div
+                        <span
                           style={{
                             display: 'inline-flex',
                             alignItems: 'center',
-                            gap: '6px',
-                            padding: '6px 12px',
+                            gap: '5px',
+                            padding: '4px 9px',
                             borderRadius: '9999px',
                             backgroundColor: isDark ? '#221A1E' : '#F2ECED',
+                            border: isDark ? '1px solid #2E2429' : '1px solid #E5DCDF',
                             color: isDark ? '#B8A2AB' : '#84626D',
                             fontSize: '11px',
                             fontWeight: 600,
-                            flexShrink: 0
+                            whiteSpace: 'nowrap'
                           }}
                         >
-                          <Laptop style={{ width: '13px', height: '13px' }} />
+                          <Laptop style={{ width: '12px', height: '12px' }} />
                           <span>Web</span>
-                        </div>
+                        </span>
                       )}
-                    </div>
 
-                    {/* Middle Row: Progress and Info Grid */}
-                    <div
-                      style={{
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
-                        gap: '12px',
-                        backgroundColor: isDark ? '#20181C' : '#FAFAFA',
-                        padding: '12px 14px',
-                        borderRadius: '16px',
-                        border: isDark ? '1px solid #2B1F25' : '1px solid #F0E6E9'
-                      }}
-                    >
-                      <div>
-                        <span style={{ fontSize: '10.5px', color: isDark ? '#B8A2AB' : '#84626D', display: 'block' }}>
-                          Dispositivo / SO
-                        </span>
-                        <span style={{ fontSize: '12.5px', fontWeight: 600, color: isDark ? '#F7EFF2' : '#301D23', display: 'block', marginTop: '2px' }}>
-                          {u.pwa_device_info || 'Navegador Web'}
-                        </span>
-                      </div>
-
-                      <div>
-                        <span style={{ fontSize: '10.5px', color: isDark ? '#B8A2AB' : '#84626D', display: 'block' }}>
-                          Instalado em
-                        </span>
-                        <span style={{ fontSize: '12.5px', fontWeight: 600, color: isDark ? '#F7EFF2' : '#301D23', display: 'block', marginTop: '2px' }}>
-                          {u.pwa_installed_at ? new Date(u.pwa_installed_at).toLocaleDateString('pt-BR') : 'Não instalado'}
-                        </span>
-                      </div>
-
-                      <div>
-                        <span style={{ fontSize: '10.5px', color: isDark ? '#B8A2AB' : '#84626D', display: 'block' }}>
-                          Progresso no Desafio
-                        </span>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
-                          <div style={{ flex: 1, height: '6px', borderRadius: '9999px', backgroundColor: isDark ? '#33262C' : '#E9E2E4', overflow: 'hidden' }}>
-                            <div
-                              style={{
-                                width: `${Math.min(100, workoutPercent)}%`,
-                                height: '100%',
-                                backgroundColor: '#D3455B',
-                                borderRadius: '9999px'
-                              }}
-                            />
-                          </div>
-                          <span style={{ fontSize: '11px', fontWeight: 700, color: '#D3455B' }}>
-                            {workoutsDone}/21d
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Bottom Action */}
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: '2px' }}>
+                      {/* Action Button */}
                       <button
                         onClick={() => openComposerForUser(u)}
+                        title="Enviar notificação push exclusiva para este aluno"
                         style={{
-                          height: '34px',
-                          padding: '0 14px',
+                          height: '32px',
+                          padding: '0 12px',
                           borderRadius: '10px',
                           backgroundColor: 'rgba(211, 69, 91, 0.1)',
                           color: '#D3455B',
-                          border: 'none',
+                          border: '1px solid rgba(211, 69, 91, 0.2)',
                           fontSize: '12px',
                           fontWeight: 700,
                           display: 'inline-flex',
                           alignItems: 'center',
                           gap: '6px',
                           cursor: 'pointer',
-                          transition: 'all 0.2s ease'
+                          transition: 'all 0.15s ease',
+                          whiteSpace: 'nowrap'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = '#D3455B';
+                          e.currentTarget.style.color = '#FFFFFF';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = 'rgba(211, 69, 91, 0.1)';
+                          e.currentTarget.style.color = '#D3455B';
                         }}
                       >
-                        <Send style={{ width: '13px', height: '13px' }} />
-                        <span>Enviar Notificação</span>
+                        <Send style={{ width: '12px', height: '12px' }} />
+                        <span>Notificar</span>
                       </button>
                     </div>
                   </div>
                 );
               })}
+            </div>
+          )}
+
+          {/* Pagination Controls Bar */}
+          {filteredUsers.length > 0 && (
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                flexWrap: 'wrap',
+                gap: '12px',
+                marginTop: '16px',
+                padding: '12px 16px',
+                backgroundColor: isDark ? '#181215' : '#FFFFFF',
+                borderRadius: '16px',
+                border: isDark ? '1px solid #281E23' : '1px solid #EDE4E7',
+                boxShadow: isDark ? '0 2px 8px rgba(0,0,0,0.15)' : '0 2px 6px rgba(61,41,48,0.02)'
+              }}
+            >
+              {/* Left: Info Range */}
+              <div style={{ fontSize: '12.5px', color: isDark ? '#B8A2AB' : '#84626D' }}>
+                Mostrando <strong style={{ color: isDark ? '#F7EFF2' : '#301D23' }}>{startIndex + 1}–{Math.min(startIndex + usersPerPage, filteredUsers.length)}</strong> de <strong style={{ color: isDark ? '#F7EFF2' : '#301D23' }}>{filteredUsers.length}</strong> alunos
+              </div>
+
+              {/* Right: Items per page & Page navigation */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: isDark ? '#B8A2AB' : '#84626D' }}>
+                  <span>Por página:</span>
+                  <select
+                    value={usersPerPage}
+                    onChange={(e) => {
+                      setUsersPerPage(Number(e.target.value));
+                      setCurrentPage(1);
+                    }}
+                    style={{
+                      backgroundColor: isDark ? '#231A1E' : '#F5EFF1',
+                      color: isDark ? '#F7EFF2' : '#301D23',
+                      border: isDark ? '1px solid #36282E' : '1px solid #DFD5D8',
+                      borderRadius: '8px',
+                      padding: '4px 8px',
+                      fontSize: '12px',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      outline: 'none'
+                    }}
+                  >
+                    <option value={5}>5</option>
+                    <option value={10}>10</option>
+                    <option value={20}>20</option>
+                    <option value={50}>50</option>
+                  </select>
+                </div>
+
+                {totalPages > 1 && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    {/* Previous Page Button */}
+                    <button
+                      onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                      disabled={safeCurrentPage <= 1}
+                      aria-label="Página anterior"
+                      style={{
+                        width: '32px',
+                        height: '32px',
+                        borderRadius: '8px',
+                        border: isDark ? '1px solid #2B1F25' : '1px solid #E5DCDF',
+                        backgroundColor: isDark ? '#20181C' : '#FAFAFA',
+                        color: safeCurrentPage <= 1 ? (isDark ? '#4D3B43' : '#D1C4C8') : (isDark ? '#F7EFF2' : '#301D23'),
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: safeCurrentPage <= 1 ? 'not-allowed' : 'pointer',
+                        transition: 'all 0.15s ease'
+                      }}
+                    >
+                      <ChevronLeft style={{ width: '15px', height: '15px' }} />
+                    </button>
+
+                    {/* Page Numbers */}
+                    {Array.from({ length: totalPages }, (_, idx) => idx + 1)
+                      .filter(pageNum => {
+                        if (totalPages <= 7) return true;
+                        if (pageNum === 1 || pageNum === totalPages) return true;
+                        if (Math.abs(pageNum - safeCurrentPage) <= 1) return true;
+                        return false;
+                      })
+                      .reduce((acc, pageNum, idx, arr) => {
+                        if (idx > 0 && pageNum - arr[idx - 1] > 1) {
+                          acc.push('ellipsis-' + pageNum);
+                        }
+                        acc.push(pageNum);
+                        return acc;
+                      }, [])
+                      .map((item) => {
+                        if (typeof item === 'string') {
+                          return (
+                            <span
+                              key={item}
+                              style={{
+                                width: '20px',
+                                textAlign: 'center',
+                                fontSize: '12px',
+                                color: isDark ? '#7D6A73' : '#A38B94'
+                              }}
+                            >
+                              ...
+                            </span>
+                          );
+                        }
+
+                        const isCurrent = item === safeCurrentPage;
+                        return (
+                          <button
+                            key={item}
+                            onClick={() => setCurrentPage(item)}
+                            style={{
+                              minWidth: '32px',
+                              height: '32px',
+                              padding: '0 6px',
+                              borderRadius: '8px',
+                              border: isCurrent
+                                ? 'none'
+                                : isDark
+                                ? '1px solid #2B1F25'
+                                : '1px solid #E5DCDF',
+                              backgroundColor: isCurrent
+                                ? '#D3455B'
+                                : isDark
+                                ? '#20181C'
+                                : '#FAFAFA',
+                              color: isCurrent
+                                ? '#FFFFFF'
+                                : isDark
+                                ? '#F7EFF2'
+                                : '#301D23',
+                              fontSize: '12px',
+                              fontWeight: isCurrent ? 700 : 500,
+                              cursor: 'pointer',
+                              transition: 'all 0.15s ease',
+                              boxShadow: isCurrent ? '0 2px 6px rgba(211, 69, 91, 0.3)' : 'none'
+                            }}
+                          >
+                            {item}
+                          </button>
+                        );
+                      })}
+
+                    {/* Next Page Button */}
+                    <button
+                      onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                      disabled={safeCurrentPage >= totalPages}
+                      aria-label="Próxima página"
+                      style={{
+                        width: '32px',
+                        height: '32px',
+                        borderRadius: '8px',
+                        border: isDark ? '1px solid #2B1F25' : '1px solid #E5DCDF',
+                        backgroundColor: isDark ? '#20181C' : '#FAFAFA',
+                        color: safeCurrentPage >= totalPages ? (isDark ? '#4D3B43' : '#D1C4C8') : (isDark ? '#F7EFF2' : '#301D23'),
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: safeCurrentPage >= totalPages ? 'not-allowed' : 'pointer',
+                        transition: 'all 0.15s ease'
+                      }}
+                    >
+                      <ChevronRight style={{ width: '15px', height: '15px' }} />
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>
