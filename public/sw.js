@@ -222,7 +222,13 @@ self.addEventListener('push', (event) => {
 
   if (event.data) {
     try {
-      data = { ...data, ...event.data.json() };
+      const parsed = event.data.json();
+      data = {
+        ...data,
+        ...parsed,
+        body: parsed.body || parsed.message || data.body,
+        url: parsed.url || parsed.action_url || data.url
+      };
     } catch (e) {
       data.body = event.data.text();
     }
@@ -232,10 +238,12 @@ self.addEventListener('push', (event) => {
     body: data.body,
     icon: data.icon || '/icons/icon-192.png',
     badge: data.badge || '/icons/icon-72.png',
-    vibrate: [100, 50, 100],
+    vibrate: [150, 80, 150],
     data: {
       url: data.url || '/'
     },
+    tag: data.id || data.tag || `calistenia-push-${Date.now()}`,
+    renotify: true,
     actions: [
       { action: 'open', title: 'Abrir App' }
     ]

@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { showDeviceNotification, requestDeviceNotificationPermission } from '../utils/notifications';
+import { showDeviceNotification, requestDeviceNotificationPermission, subscribeUserToWebPush } from '../utils/notifications';
 
 const AppContext = createContext(null);
 
@@ -95,10 +95,20 @@ export function AppProvider({ children }) {
   });
 
   const requestPermission = async () => {
-    const perm = await requestDeviceNotificationPermission();
+    const perm = await requestDeviceNotificationPermission(user);
     setNotificationPermission(perm);
+    if (perm === 'granted') {
+      await subscribeUserToWebPush(user);
+    }
     return perm;
   };
+
+  // Ensure Web Push subscription is registered & tied to current user whenever permission is granted
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+      subscribeUserToWebPush(user);
+    }
+  }, [user]);
 
   const [isAdminMode, setIsAdminMode] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -538,6 +548,24 @@ export function AppProvider({ children }) {
             badge: '/icons/icon-72.png',
             action_url: action_url || '/'
           });
+        }
+
+        // Trigger Edge Function 'send-push' so that ALL offline/closed devices receive Web Push through FCM/APNs
+        try {
+          supabase.functions.invoke('send-push', {
+            body: {
+              title,
+              message,
+              action_url: action_url || '/',
+              user_id: user_id || null
+            }
+          }).then(res => {
+            console.log('[send-push] Edge function response:', res);
+          }).catch(fnErr => {
+            console.warn('[send-push] Error invoking send-push edge function:', fnErr);
+          });
+        } catch (fnEx) {
+          console.warn('[send-push] Exception invoking send-push:', fnEx);
         }
 
         return { success: true, data };
