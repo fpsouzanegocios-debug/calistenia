@@ -224,6 +224,32 @@ export function AppProvider({ children }) {
             setIsAdminMode(true);
             localStorage.setItem('calistenia_admin_mode', 'true');
           }
+        } else if (!data && mounted) {
+          // Fallback if profile row is missing: create it immediately so userProfile is never empty
+          const fallbackName = currentUser.user_metadata?.name || currentUser.email?.split('@')[0] || 'Atleta';
+          const { data: createdProfile } = await supabase
+            .from('profiles')
+            .upsert({
+              user_id: currentUser.id,
+              email: currentUser.email,
+              name: fallbackName,
+              onboarding_completed: false
+            }, { onConflict: 'user_id' })
+            .select()
+            .single();
+
+          if (mounted) {
+            setState(prev => ({
+              ...prev,
+              userProfile: {
+                ...prev.userProfile,
+                name: createdProfile?.name || fallbackName,
+                email: createdProfile?.email || currentUser.email,
+                onboardingCompleted: createdProfile?.onboarding_completed ?? false,
+                isAdmin: createdProfile?.is_admin ?? false
+              }
+            }));
+          }
         }
 
         // Fetch completed workout progress

@@ -1,19 +1,49 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { supabase } from '../lib/supabase';
-import { Mail, Lock, User, Eye, EyeOff, Phone } from 'lucide-react';
+import { Mail, Lock, User, Eye, EyeOff, Phone, X, CheckCircle2 } from 'lucide-react';
 
 export function Auth({ onNavigate }) {
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [showForgotModal, setShowForgotModal] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotLoading, setForgotLoading] = useState(false);
+  const [forgotMessage, setForgotMessage] = useState('');
+  const [forgotError, setForgotError] = useState('');
   const { updateUserProfile } = useApp();
+
+  const sanitizeEmail = (raw) => (raw || '').trim().toLowerCase();
+
+  const getDomainSuggestion = (val) => {
+    const trimmed = (val || '').trim().toLowerCase();
+    const typoDomains = {
+      'gmaill.com': 'gmail.com',
+      'gmal.com': 'gmail.com',
+      'gmial.com': 'gmail.com',
+      'gmai.com': 'gmail.com',
+      'hotmaill.com': 'hotmail.com',
+      'hotmial.com': 'hotmail.com',
+      'outloook.com': 'outlook.com',
+      'outlok.com': 'outlook.com',
+      'yaho.com': 'yahoo.com',
+      'yahooo.com': 'yahoo.com'
+    };
+    const parts = trimmed.split('@');
+    if (parts.length === 2 && typoDomains[parts[1]]) {
+      return `${parts[0]}@${typoDomains[parts[1]]}`;
+    }
+    return null;
+  };
 
   const handleAuth = async (e) => {
     e.preventDefault();
@@ -22,21 +52,29 @@ export function Auth({ onNavigate }) {
     setLoading(true);
 
     try {
+      const cleanEmail = sanitizeEmail(email);
+
       if (isSignUp) {
-        if (!email || !password || !name) {
+        if (!cleanEmail || !password || !name.trim()) {
           throw new Error('Por favor, completa nombre, correo electrónico y contraseña.');
         }
         if (password.length < 6) {
           throw new Error('La contraseña debe tener al menos 6 caracteres.');
         }
+        if (password !== confirmPassword) {
+          throw new Error('Las contraseñas no coinciden. Por favor, verifica ambas contraseñas.');
+        }
+
+        // Auto-correct domain typo if detected
+        const typoCorrected = getDomainSuggestion(cleanEmail) || cleanEmail;
 
         const { data, error } = await supabase.auth.signUp({
-          email,
+          email: typoCorrected,
           password,
           options: {
             data: {
-              name,
-              phone
+              name: name.trim(),
+              phone: phone.trim()
             }
           }
         });
@@ -46,16 +84,16 @@ export function Auth({ onNavigate }) {
         // If session is not immediately available, sign in to establish persistent session
         if (!data.session) {
           try {
-            await supabase.auth.signInWithPassword({ email, password });
+            await supabase.auth.signInWithPassword({ email: typoCorrected, password });
           } catch (autoSignErr) {
             console.warn('Auto sign-in notice:', autoSignErr);
           }
         }
 
         await updateUserProfile({
-          name,
-          email,
-          phone,
+          name: name.trim(),
+          email: typoCorrected,
+          phone: phone.trim(),
           onboardingCompleted: false
         });
 
@@ -70,12 +108,12 @@ export function Auth({ onNavigate }) {
           onNavigate('/onboarding');
         }, 500);
       } else {
-        if (!email || !password) {
+        if (!cleanEmail || !password) {
           throw new Error('Por favor, ingresa tu correo electrónico y contraseña.');
         }
 
         const { data, error } = await supabase.auth.signInWithPassword({
-          email,
+          email: cleanEmail,
           password
         });
 
@@ -120,17 +158,42 @@ export function Auth({ onNavigate }) {
       console.error('Auth error:', err);
       let msg = err.message || 'Ocurrió un error al procesar.';
       if (msg.includes('Invalid login credentials')) {
-        msg = 'Correo electrónico o contraseña incorrectos.';
+        msg = 'Correo electrónico o contraseña incorrectos. Verifica que el correo esté bien escrito y la contraseña sea correcta.';
       } else if (msg.includes('Email not confirmed')) {
         msg = 'Correo electrónico no confirmado. Por favor intenta de nuevo.';
       } else if (msg.includes('User already registered')) {
-        msg = 'Este correo ya está registrado. Intenta iniciar sesión.';
+        msg = 'Este correo ya está registrado. Por favor, haz clic abajo en "Iniciar sesión".';
       } else if (msg.includes('Database error querying schema') || msg.includes('Scan error')) {
         msg = 'Error interno en la base de datos. Por favor, intenta de nuevo.';
       }
       setErrorMessage(msg);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async (e) => {
+    e.preventDefault();
+    const cleanForgotEmail = sanitizeEmail(forgotEmail);
+    if (!cleanForgotEmail) {
+      setForgotError('Por favor, ingresa tu correo electrónico.');
+      return;
+    }
+
+    setForgotLoading(true);
+    setForgotError('');
+    setForgotMessage('');
+
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(cleanForgotEmail, {
+        redirectTo: window.location.origin
+      });
+      if (error) throw error;
+      setForgotMessage('¡Enlace de recuperación enviado! Revisa tu bandeja de entrada o spam.');
+    } catch (err) {
+      setForgotError(err.message || 'Error al enviar enlace de recuperación.');
+    } finally {
+      setForgotLoading(false);
     }
   };
 
@@ -291,10 +354,34 @@ export function Auth({ onNavigate }) {
                 placeholder="tu@correo.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck="false"
                 className="auth-pill-input"
                 required
               />
             </div>
+            {isSignUp && getDomainSuggestion(email) && (
+              <div style={{ fontSize: '11px', color: '#D3455B', marginTop: '6px', paddingLeft: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span>💡 ¿Quisiste decir <strong>{getDomainSuggestion(email)}</strong>?</span>
+                <button
+                  type="button"
+                  onClick={() => setEmail(getDomainSuggestion(email))}
+                  style={{
+                    backgroundColor: 'rgba(211, 69, 91, 0.12)',
+                    border: 'none',
+                    color: '#D3455B',
+                    fontWeight: 700,
+                    borderRadius: '6px',
+                    padding: '2px 8px',
+                    fontSize: '11px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Corregir
+                </button>
+              </div>
+            )}
           </div>
 
           {isSignUp && (
@@ -347,7 +434,7 @@ export function Auth({ onNavigate }) {
               />
               <input
                 type={showPassword ? 'text' : 'password'}
-                placeholder="••••••••"
+                placeholder="Mínimo 6 caracteres"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="auth-pill-input"
@@ -378,12 +465,70 @@ export function Auth({ onNavigate }) {
             </div>
           </div>
 
+          {isSignUp && (
+            <div>
+              <label className="block text-xs font-medium text-[#6B575F] dark:text-[#B8A2AB] mb-2 pl-2">
+                Confirmar contraseña
+              </label>
+              <div style={{ position: 'relative', width: '100%', display: 'flex', alignItems: 'center' }}>
+                <Lock
+                  style={{
+                    position: 'absolute',
+                    left: '20px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    width: '18px',
+                    height: '18px',
+                    color: '#A19198',
+                    pointerEvents: 'none',
+                    zIndex: 5
+                  }}
+                />
+                <input
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  placeholder="Repite tu contraseña"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="auth-pill-input"
+                  required={isSignUp}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(prev => !prev)}
+                  style={{
+                    position: 'absolute',
+                    right: '20px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'transparent',
+                    border: 'none',
+                    padding: '6px',
+                    cursor: 'pointer',
+                    color: '#A19198',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 10
+                  }}
+                  title={showConfirmPassword ? 'Ocultar contraseña' : 'Ver contraseña'}
+                >
+                  {showConfirmPassword ? <EyeOff style={{ width: '18px', height: '18px' }} /> : <Eye style={{ width: '18px', height: '18px' }} />}
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Olvidé mi contraseña */}
           {!isSignUp && (
             <div style={{ textAlign: 'right', marginTop: '-8px', paddingRight: '6px' }}>
               <button
                 type="button"
-                onClick={() => alert('Para restablecer tu contraseña, ponte en contacto con soporte o inicia sesión con Google.')}
+                onClick={() => {
+                  setForgotEmail(email || '');
+                  setForgotError('');
+                  setForgotMessage('');
+                  setShowForgotModal(true);
+                }}
                 className="text-xs text-[#D3455B] hover:opacity-80 transition-opacity font-normal cursor-pointer"
               >
                 ¿Olvidaste tu contraseña?
@@ -436,6 +581,116 @@ export function Auth({ onNavigate }) {
       >
         Al continuar, aceptas nuestros Términos de Uso y Política de Privacidad.
       </p>
+
+      {/* Forgot Password Modal */}
+      {showForgotModal && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(0,0,0,0.6)',
+            backdropFilter: 'blur(4px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '20px',
+            zIndex: 100
+          }}
+          className="animate-fade-in"
+        >
+          <div
+            style={{
+              backgroundColor: '#FFFFFF',
+              borderRadius: '28px',
+              padding: '28px 24px',
+              maxWidth: '380px',
+              width: '100%',
+              boxShadow: '0 20px 50px rgba(0,0,0,0.2)',
+              position: 'relative'
+            }}
+            className="animate-scale-up dark:bg-[#1C1518]"
+          >
+            <button
+              type="button"
+              onClick={() => setShowForgotModal(false)}
+              style={{
+                position: 'absolute',
+                right: '18px',
+                top: '18px',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                color: '#84626D',
+                padding: '4px'
+              }}
+              aria-label="Cerrar"
+            >
+              <X style={{ width: '20px', height: '20px' }} />
+            </button>
+
+            <h3 style={{ fontSize: '18px', fontWeight: 700, margin: '0 0 8px 0', textAlign: 'center' }}>
+              Recuperar Contraseña
+            </h3>
+            <p style={{ fontSize: '12.5px', color: '#84626D', margin: '0 0 20px 0', textAlign: 'center', lineHeight: 1.4 }}>
+              Ingresa tu correo electrónico registrado y te enviaremos un enlace seguro para restablecer tu contraseña.
+            </p>
+
+            {forgotError && (
+              <div className="p-3 mb-4 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-xs font-medium text-center">
+                {forgotError}
+              </div>
+            )}
+
+            {forgotMessage && (
+              <div className="p-3 mb-4 rounded-xl bg-success/10 border border-success/20 text-success text-xs font-medium text-center">
+                {forgotMessage}
+              </div>
+            )}
+
+            <form onSubmit={handleForgotPassword} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div style={{ position: 'relative', width: '100%', display: 'flex', alignItems: 'center' }}>
+                <Mail
+                  style={{
+                    position: 'absolute',
+                    left: '16px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    width: '16px',
+                    height: '16px',
+                    color: '#A19198',
+                    pointerEvents: 'none'
+                  }}
+                />
+                <input
+                  type="email"
+                  placeholder="tu@correo.com"
+                  value={forgotEmail}
+                  onChange={(e) => setForgotEmail(e.target.value)}
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck="false"
+                  className="auth-pill-input"
+                  style={{ paddingLeft: '44px' }}
+                  required
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={forgotLoading}
+                className="auth-btn-primary"
+                style={{ borderRadius: '9999px', height: '46px', marginTop: '6px' }}
+              >
+                {forgotLoading ? (
+                  <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                ) : (
+                  <span>Enviar enlace</span>
+                )}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
